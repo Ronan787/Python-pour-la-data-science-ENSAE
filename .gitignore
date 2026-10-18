@@ -1,0 +1,4 @@
+#Types de fichier à exclure
+*.parquet
+*.csv
+*.tmp
