@@ -1,7 +1,7 @@
 """
 OBJECTIF
-    1. Importer les données extraites via le script 1.data_extraction_ademe.py
-    2. Nettoyer et formatter les données
+    1. Importer les données extraites par le script scripts/data_extraction_ademe.py depuis S3
+    2. Nettoyer et formater les données
 """
 
 

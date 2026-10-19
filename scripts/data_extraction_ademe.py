@@ -21,8 +21,8 @@ CHECKPOINT
     dpe_ademe/ avant de relancer.
 
 UTILISATION
-    Dans le bloc d'exécution à la fin du script, remplacer "nom_du_bucket" par le
-    nom de son bucket S3 pour avoir une copie.
+    Configurer le paramètre S3_BUCKET en renseignant le nom de son bucket S3 pour enregistrer
+    une copie des données.
     pip install -r requirements.txt
     python scripts/data_extraction_ademe.py
 """
@@ -41,6 +41,9 @@ from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 
 # --- Paramètres -------------------------------------------------------------
+
+S3_BUCKET = "nom_du_bucket"  # A configurer !
+
 URL = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe-france/lines"
 API_PAGE_SIZE = 10_000       # lignes par requête
 ROWS_PER_FILE = 100_000       # lignes par fichier intermédiaire
@@ -248,4 +251,4 @@ def upload_to_s3(s3_bucket):
 if __name__ == "__main__":
     download_from_api()
     merge_parts()
-    upload_to_s3("nom_du_bucket")  # A adapter selon le nom du bucket
+    upload_to_s3(S3_BUCKET)

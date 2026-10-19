@@ -1,19 +1,39 @@
-# Types de fichier à exclure
+# Données et fichiers générés
 *.parquet
 *.csv
-*.tmp  
+*.tmp
 *.xlsx
 *.gpkg
-
-# Fichiers de reprise du téléchargement
 *.checkpoint.json
+
+# Configuration locale et secrets
+.env
+.env.*
+!.env.example
+.envrc
 
 # Environnements Python
 .venv/
 venv/
+env/
 __pycache__/
 *.py[cod]
+*.egg-info/
 
-# Fichiers liés au site quarto
-rapport.html
-rapport_files/
+# Tests et couverture
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Outils de développement
+.mypy_cache/
+.ruff_cache/
+
+# Fichiers temporaires et système
+tempCodeRunnerFile.py
+.DS_Store
+Thumbs.db
