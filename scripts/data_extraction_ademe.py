@@ -7,11 +7,11 @@ SOURCE
     API Data Fair de data.ademe.fr (aucune clé nécessaire).
 
 ÉTAPES
-    1. download_from_api()     Télécharge par pages de API_PAGE_SIZE lignes, regroupées en
+    1. download_from_api()  télécharge par pages de API_PAGE_SIZE lignes, regroupées en
                       fichiers intermédiaires de ROWS_PER_FILE lignes
                       (dpe_ademe/dpe_parts/part_XXXXX.parquet).
-    2. merge_parts()  Fusionne les fichiers intermédiaires en dpe_ademe/dpe.parquet.
-    3. upload_to_S3() enregistre le fichier dans S3
+    2. merge_parts()  fusionne les fichiers intermédiaires en dpe_ademe/dpe.parquet.
+    3. upload_to_S3()  enregistre le fichier dans S3
 
 CHECKPOINT
     Permet une relance après interruption. En cas d'interruption, relancer le script
@@ -21,8 +21,10 @@ CHECKPOINT
     dpe_ademe/ avant de relancer.
 
 UTILISATION
+    Dans le bloc d'exécution à la fin du script, remplacer "nom_du_bucket" par le
+    nom de son bucket S3 pour avoir une copie.
     pip install -r requirements.txt
-    python 1.data_extraction_ademe.py
+    python scripts/data_extraction_ademe.py
 """
 
 import json
@@ -78,13 +80,13 @@ SCHEMA = pa.schema(TYPES.items())
 
 
 # --- Session HTTP avec reprise automatique ----------------------------------
-"""
-Crée une session HTTP réutilisable avec des tentatives automatiques
-en cas d'erreurs temporaires du serveur.
-"""
 
 
 def make_session() -> requests.Session:
+    """
+    Crée une session HTTP réutilisable avec des tentatives automatiques
+    en cas d'erreurs temporaires du serveur.
+    """
     session = requests.Session()
     retries = Retry(
         total=8,  # jusqu'à 8 tentatives
@@ -97,15 +99,15 @@ def make_session() -> requests.Session:
 
 
 # --- Conversion de lignes JSON en table Arrow -------------------------------
-"""
-Convertit une liste de lignes JSON renvoyées par l'API en table Arrow.
-Crée un DataFrame pandas et sélectionne les colonnes attendues.
-Convertit chaque colonne vers un type compatible avec TYPES.
-Renvoie une table Arrow utilisant le schéma commun.
-"""
 
 
 def rows_to_table(rows: list[dict]) -> pa.Table:
+    """
+    Convertit une liste de lignes JSON renvoyées par l'API en table Arrow.
+    Crée un DataFrame pandas et sélectionne les colonnes attendues.
+    Convertit chaque colonne vers un type compatible avec TYPES.
+    Renvoie une table Arrow utilisant le schéma commun.
+    """
     df = pd.DataFrame(rows).reindex(columns=COLUMNS)   # colonne absente -> vide
     for col, typ in TYPES.items():
         # errors="coerce" transforme les valeurs non convertibles en NaN au lieu de
@@ -120,13 +122,13 @@ def rows_to_table(rows: list[dict]) -> pa.Table:
 
 
 # --- Téléchargement ---------------------------------------------------------
-"""
-Télécharge toutes les pages de l'API, les convertit en Parquet et
-sauvegarde régulièrement l'état d'avancement pour permettre la reprise.
-"""
 
 
 def download_from_api() -> None:
+    """
+    Télécharge toutes les pages de l'API, les convertit en Parquet et
+    sauvegarde régulièrement l'état d'avancement pour permettre la reprise.
+    """
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
     session = make_session()
 
@@ -188,14 +190,14 @@ def download_from_api() -> None:
 
 
 # --- Fusion en un seul fichier ----------------------------------------------
-"""
-Fusionne tous les fichiers intermédiaires en un seul fichier Parquet.
-Le traitement se fait fichier par fichier afin d'éviter de charger
-l'ensemble des données en mémoire.
-"""
 
 
 def merge_parts() -> None:
+    """
+    Fusionne tous les fichiers intermédiaires en un seul fichier Parquet.
+    Le traitement se fait fichier par fichier afin d'éviter de charger
+    l'ensemble des données en mémoire.
+    """
     # Recherche tous les fichiers part_XXXXX.parquet et les trie par nom.
     parts = sorted(PARTS_DIR.glob("part_*.parquet"))
     if not parts:
@@ -217,25 +219,27 @@ def merge_parts() -> None:
 
 
 # ---- Exportation du fichier sur S3 -----------------------
-"""
-Enregistre le fichier dans le dossier diffusion du bucket défini afin de pouvoir
-y avoir accès sans relancer l'entièreté du script d'extraction.
-"""
 
 
-def upload_to_s3():
+def upload_to_s3(s3_bucket):
+    """
+    Enregistre le fichier dans le dossier diffusion du bucket défini.
+    """
+    if not s3_bucket or s3_bucket == "nom_du_bucket":
+        print("Export S3 ignoré : renseignez le nom du bucket.")
+        return
+
     fs = s3fs.S3FileSystem(
         client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
     )
 
-    MY_BUCKET = "mboutbal"
-    FILE_PATH_OUT_S3 = f"{MY_BUCKET}/diffusion/dpe.parquet"
+    file_path_out_s3 = f"{s3_bucket}/diffusion/dpe.parquet"
 
     with open(FINAL_PATH, "rb") as file_in:
-        with fs.open(FILE_PATH_OUT_S3, "wb") as file_out:
-            shutil.copyfileobj(file_in, file_out)  # copie le contenu en évitant d'ouvrir en mémoire
+        with fs.open(file_path_out_s3, "wb") as file_out:
+            shutil.copyfileobj(file_in, file_out)
 
-    print(f"Fichier exporté vers s3://{FILE_PATH_OUT_S3}")
+    print(f"Fichier exporté vers s3://{file_path_out_s3}")
 
 
 # ----- Exécution du script --------------------------------------------
@@ -244,4 +248,4 @@ def upload_to_s3():
 if __name__ == "__main__":
     download_from_api()
     merge_parts()
-    upload_to_s3()
+    upload_to_s3("nom_du_bucket")  # A adapter selon le nom du bucket

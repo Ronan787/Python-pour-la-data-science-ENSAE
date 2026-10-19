@@ -1,5 +1,5 @@
-# Script 1.data_extraction_ademe.py
 pandas==3.0.6
 pyarrow==25.0.1
 requests==2.34.2
 tqdm==4.70.1
+duckdb==1.5.6
