@@ -1,4 +1,15 @@
-#Types de fichier à exclure
+# Types de fichier à exclure
 *.parquet
 *.csv
-*.tmp
+*.tmp  
+*.xlsx
+*.gpkg
+
+# Fichiers de reprise du téléchargement
+*.checkpoint.json
+
+# Environnements Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]

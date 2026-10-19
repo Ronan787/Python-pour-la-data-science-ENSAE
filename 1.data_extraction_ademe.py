@@ -10,21 +10,21 @@ SOURCE
     1. download()     Télécharge par pages de API_PAGE_SIZE lignes, regroupées en
                       fichiers intermédiaires de ROWS_PER_FILE lignes
                       (dpe_ademe/dpe_parts/part_XXXXX.parquet).
-    2. merge_parts()  Fusionne les fichiers intermédiaires en dpe_ademe/dpe.parquet.                      
+    2. merge_parts()  Fusionne les fichiers intermédiaires en dpe_ademe/dpe.parquet.
+    3. enregistre le fichier dans S3
 
-REPRISE APRÈS INTERRUPTION
-    Relancer la même commande, sans rien supprimer. Le checkpoint n'est écrit
-    qu'après l'écriture complète d'un fichier intermédiaire : au plus ROWS_PER_FILE
-    lignes sont retéléchargées, sans doublon.
-    Si TYPES, SORT_FIELD ou API_PAGE_SIZE sont modifiés, supprimer d'abord le
-    dossier dpe_ademe/ avant de relancer.
+CHECKPOINT
+    Permet une relance après interruption. En cas d'interruption, relancer le script
+    directement. Le checkpoint n'est écrit qu'après l'écriture complète d'un fichier
+    intermédiaire : au plus ROWS_PER_FILE lignes sont retéléchargées, sans doublon.
+    Si TYPES, SORT_FIELD ou API_PAGE_SIZE sont modifiés, supprimer d'abord le dossier
+    dpe_ademe/ avant de relancer.
 
 UTILISATION
     pip install -r requirements.txt
-    python 1.data_extraction_ademe.py             
+    python 1.data_extraction_ademe.py
 """
 
-import os
 import json
 import shutil
 from pathlib import Path
@@ -34,25 +34,26 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import requests
+import s3fs
 from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 
 # --- Paramètres -------------------------------------------------------------
 URL = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe-france/lines"
-API_PAGE_SIZE = 10_000       # lignes par requête 
+API_PAGE_SIZE = 10_000       # lignes par requête
 ROWS_PER_FILE = 100_000       # lignes par fichier intermédiaire
 SORT_FIELD = "numero_dpe"    # identifiant unique, nécessaire à la pagination
 
 OUT_DIR = Path("dpe_ademe")
 PARTS_DIR = OUT_DIR / "dpe_parts"          # fichiers intermédiaires
 FINAL_PATH = OUT_DIR / "dpe.parquet"       # fichier final (dossier de travail)
-CHECKPOINT = OUT_DIR / "dpe.checkpoint.json" # fichier JSON qui mémorise l'état du téléchargement.
+CHECKPOINT = OUT_DIR / "dpe.checkpoint.json"  # fichier JSON qui mémorise l'état du téléchargement.
 
 TYPES = {
     "numero_dpe": pa.string(),
-    "date_etablissement_dpe": pa.date32(),
+    "date_etablissement_dpe": pa.date32(),            # format date
     "geo_adresse": pa.string(),
-    "code_insee_commune_actualise": pa.string(),      # texte : zéros initiaux
+    "code_insee_commune_actualise": pa.string(),      # texte
     "tv016_departement_code": pa.string(),            # texte : "2A", "2B", "01"
     "latitude": pa.float64(),
     "longitude": pa.float64(),
@@ -70,8 +71,8 @@ TYPES = {
 
 COLUMNS = list(TYPES)
 
-# Schéma Arrow commun à tous les fichiers : garantit que les fichiers intermédiaires 
-# et le fichier final utilisent les mêmes colonnes et les mêmes types, même si 
+# Schéma Arrow commun à tous les fichiers : garantit que les fichiers intermédiaires
+# et le fichier final utilisent les mêmes colonnes et les mêmes types, même si
 # certaines colonnes sont vides.
 SCHEMA = pa.schema(TYPES.items())
 
@@ -82,11 +83,12 @@ Crée une session HTTP réutilisable avec des tentatives automatiques
 en cas d'erreurs temporaires du serveur.
 """
 
+
 def make_session() -> requests.Session:
     session = requests.Session()
     retries = Retry(
         total=8,  # jusqu'à 8 tentatives
-        backoff_factor=2, #délai progressif entre les tentatives 
+        backoff_factor=2,   # délai progressif entre les tentatives
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["GET"],
     )
@@ -96,11 +98,12 @@ def make_session() -> requests.Session:
 
 # --- Conversion de lignes JSON en table Arrow -------------------------------
 """
-    Convertit une liste de lignes JSON renvoyées par l'API en table Arrow.
-    Crée un DataFrame pandas et sélectionne les colonnes attendues.
-    Convertit chaque colonne vers un type compatible avec TYPES.
-    Renvoie une table Arrow utilisant le schéma commun.
-    """
+Convertit une liste de lignes JSON renvoyées par l'API en table Arrow.
+Crée un DataFrame pandas et sélectionne les colonnes attendues.
+Convertit chaque colonne vers un type compatible avec TYPES.
+Renvoie une table Arrow utilisant le schéma commun.
+"""
+
 
 def rows_to_table(rows: list[dict]) -> pa.Table:
     df = pd.DataFrame(rows).reindex(columns=COLUMNS)   # colonne absente -> vide
@@ -119,14 +122,15 @@ def rows_to_table(rows: list[dict]) -> pa.Table:
 # --- Téléchargement ---------------------------------------------------------
 """
 Télécharge toutes les pages de l'API, les convertit en Parquet et
-    sauvegarde régulièrement l'état d'avancement pour permettre la reprise.
-    """
+sauvegarde régulièrement l'état d'avancement pour permettre la reprise.
+"""
+
 
 def download() -> None:
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
     session = make_session()
 
-    #Reprise ou initialisation du téléchargement
+    # Reprise ou initialisation du téléchargement
     part_idx, total, received = 0, None, 0
     if CHECKPOINT.exists():
         state = json.loads(CHECKPOINT.read_text(encoding="utf-8"))
@@ -137,7 +141,7 @@ def download() -> None:
         part_idx, received = state["part"], state["received"]
         print(f"Reprise au fichier {part_idx} ({received} lignes déjà enregistrées).")
     else:
-        #SORT_FIELD : API ADEME trie les données selon le champ numero_dpe id unique
+        # SORT_FIELD : API ADEME trie les données selon le champ numero_dpe id unique
         params = {"size": API_PAGE_SIZE, "select": ",".join(COLUMNS), "sort": SORT_FIELD}
         url = f"{URL}?{urlencode(params)}"
 
@@ -145,7 +149,7 @@ def download() -> None:
     # Barre de progression
     pbar = tqdm(unit="lignes", total=total, initial=received)
 
-    #Téléchargement page par page : requête GET
+    # Téléchargement page par page : requête GET
     while url:
         resp = session.get(url, timeout=(15, 120))
         resp.raise_for_status()
@@ -190,6 +194,7 @@ Le traitement se fait fichier par fichier afin d'éviter de charger
 l'ensemble des données en mémoire.
 """
 
+
 def merge_parts() -> None:
     # Recherche tous les fichiers part_XXXXX.parquet et les trie par nom.
     parts = sorted(PARTS_DIR.glob("part_*.parquet"))
@@ -217,8 +222,7 @@ if __name__ == "__main__":
     merge_parts()
 
 
-#---- Exportation du fichier sur S3 -----------------------
-import s3fs
+# ---- Exportation du fichier sur S3 -----------------------
 
 fs = s3fs.S3FileSystem(
     client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
@@ -229,6 +233,6 @@ FILE_PATH_OUT_S3 = f"{MY_BUCKET}/diffusion/dpe.parquet"
 
 with open(FINAL_PATH, "rb") as file_in:
     with fs.open(FILE_PATH_OUT_S3, "wb") as file_out:
-        shutil.copyfileobj(file_in, file_out)
+        shutil.copyfileobj(file_in, file_out)  # copie le contenu en évitant d'ouvrir en mémoire
 
 print(f"Fichier exporté vers s3://{FILE_PATH_OUT_S3}")
