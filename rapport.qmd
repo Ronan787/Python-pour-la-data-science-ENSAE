@@ -1,0 +1,89 @@
+---
+title: "Analyse des diagnostics de performance énergétique"
+subtitle: "Projet Python — ADEME"
+author: "Maëlle Boutbal - Capucine Bouyer - Ronan Gorin"
+date: today
+lang: fr
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    code-summary: "Afficher le code"
+    number-sections: true
+jupyter: python3
+execute:
+  echo: true
+  warning: false
+---
+
+# Introduction
+
+## Objectif du projet
+
+## Sommaire 
+Le travail est organisé en plusieurs étapes :
+
+1. Récupération des données DPE depuis l'API de l'ADEME et conversion au format parquet
+2. 
+
+# Présentation des données
+
+## Source
+
+Les données proviennent du jeu de données **DPE Logements avant juillet 2021**, accessible via l'API Data Fair de l'ADEME, correspondant aux anciens diagnostics réalisés avant l'entrée en vigueur du nouveau DPE en juillet 2021. 
+
+## Variables retenues
+
+L'extraction conserve notamment les variables suivantes :
+
+| Dimension | Variables | Description |
+|---|---|---|
+| Identification | `numero_dpe` | Identifiant du diagnostic |
+| Date | `date_etablissement_dpe` | Date d'établissement du diagnostic |
+| Localisation | `code_insee_commune_actualise`, `latitude`, `longitude` | Localisation géographique |
+| Énergie | `classe_consommation_energie`, `consommation_energie` | Classe et consommation énergétique |
+| Émissions | `classe_estimation_ges`, `estimation_ges` | Classe et estimation des émissions de gaz à effet de serre |
+| Logement | `tr002_type_batiment_description`, `annee_construction`, `surface_thermique_lot` | Caractéristiques du bâtiment |
+| Méthode | `nom_methode_dpe`, `version_methode_dpe` | Méthode utilisée pour établir le diagnostic |
+
+
+# Méthodologie d'extraction et de stockage
+
+## Téléchargement depuis l'API
+
+Le script `1.data_extraction_ademe.py` réalise l'extraction des données par requêtes successives à l'API de l'ADEME.
+
+## Stockage sur S3
+
+Le fichier final est enregistré sur le stockage objet du SSPCloud, à l'emplacement :
+
+` s3://mboutbal/diffusion/dpe.parquet `
+
+# Exploration initiale des données
+
+## Connexion au fichier Parquet
+
+Le fichier est ensuite interrogé directement depuis S3 avec DuckDB, sans qu'il soit nécessaire de charger l'intégralité du jeu de données en mémoire.
+
+```{python}
+import duckdb
+
+MY_BUCKET = "mboutbal"
+FILE_PATH_S3 = f"s3://{MY_BUCKET}/diffusion/dpe.parquet"
+
+con = duckdb.connect()
+```
+
+## Vérifications
+
+Nous commençons par compter le nombre total de lignes ainsi que le nombre de diagnostics distincts identifiés par `numero_dpe`.
+
+```{python}
+nb_lines = con.execute(f"""
+    SELECT COUNT(DISTINCT numero_dpe)
+    FROM read_parquet('{FILE_PATH_S3}')
+""").fetchone()
+
+print("Nombre de numero_dpe uniques :", nb_lines[0])
+```

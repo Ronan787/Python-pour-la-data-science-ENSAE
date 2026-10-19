@@ -7,11 +7,11 @@ SOURCE
     API Data Fair de data.ademe.fr (aucune clé nécessaire).
 
 ÉTAPES
-    1. download()     Télécharge par pages de API_PAGE_SIZE lignes, regroupées en
+    1. download_from_api()     Télécharge par pages de API_PAGE_SIZE lignes, regroupées en
                       fichiers intermédiaires de ROWS_PER_FILE lignes
                       (dpe_ademe/dpe_parts/part_XXXXX.parquet).
     2. merge_parts()  Fusionne les fichiers intermédiaires en dpe_ademe/dpe.parquet.
-    3. enregistre le fichier dans S3
+    3. upload_to_S3() enregistre le fichier dans S3
 
 CHECKPOINT
     Permet une relance après interruption. En cas d'interruption, relancer le script
@@ -126,7 +126,7 @@ sauvegarde régulièrement l'état d'avancement pour permettre la reprise.
 """
 
 
-def download() -> None:
+def download_from_api() -> None:
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
     session = make_session()
 
@@ -216,23 +216,32 @@ def merge_parts() -> None:
     print(f"Fichier final -> {FINAL_PATH} ({n_final} lignes)")
 
 
-# ----- Exécution du script --------------------------------------------
-if __name__ == "__main__":
-    download()
-    merge_parts()
-
-
 # ---- Exportation du fichier sur S3 -----------------------
+"""
+Enregistre le fichier dans le dossier diffusion du bucket défini afin de pouvoir
+y avoir accès sans relancer l'entièreté du script d'extraction.
+"""
 
-fs = s3fs.S3FileSystem(
-    client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
-)
 
-MY_BUCKET = "mboutbal"
-FILE_PATH_OUT_S3 = f"{MY_BUCKET}/diffusion/dpe.parquet"
+def upload_to_s3():
+    fs = s3fs.S3FileSystem(
+        client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
+    )
 
-with open(FINAL_PATH, "rb") as file_in:
-    with fs.open(FILE_PATH_OUT_S3, "wb") as file_out:
-        shutil.copyfileobj(file_in, file_out)  # copie le contenu en évitant d'ouvrir en mémoire
+    MY_BUCKET = "mboutbal"
+    FILE_PATH_OUT_S3 = f"{MY_BUCKET}/diffusion/dpe.parquet"
 
-print(f"Fichier exporté vers s3://{FILE_PATH_OUT_S3}")
+    with open(FINAL_PATH, "rb") as file_in:
+        with fs.open(FILE_PATH_OUT_S3, "wb") as file_out:
+            shutil.copyfileobj(file_in, file_out)  # copie le contenu en évitant d'ouvrir en mémoire
+
+    print(f"Fichier exporté vers s3://{FILE_PATH_OUT_S3}")
+
+
+# ----- Exécution du script --------------------------------------------
+# Lance le téléchargement, la fusion des fichiers Parquet et l'export sur S3.
+
+if __name__ == "__main__":
+    download_from_api()
+    merge_parts()
+    upload_to_s3()
