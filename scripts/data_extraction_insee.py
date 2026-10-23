@@ -1,16 +1,17 @@
 """
 OBJECTIF
-    Télécharger les données carroyées à 200 m de Filosofi 2021 (INSEE : revenus,
-    pauvreté et niveau de vie) au format csv.
+    Récupérer les données carroyées à 200 m de Filosofi 2021 (INSEE : revenus,
+    pauvreté et niveau de vie) au format GeoPackage, avec les géométries des carreaux.
 
 SOURCE
     https://www.insee.fr/fr/statistiques/8735162
-    Fichier zip en téléchargement direct (aucune clé nécessaire).
+    Le zip (Filosofi2021_carreaux_200m_gpkg.zip) a été téléchargé une fois pour toutes
+    depuis le site de l'INSEE et déposé dans le dossier diffusion du bucket S3.
 
 ÉTAPES
-    1. download_insee()  télécharge le zip (insee_filosofi/) et le décompresse.
-                         Si le zip est déjà présent, il n'est pas retéléchargé.
-    2. upload_to_s3()    enregistre les fichiers csv dans S3.
+    1. download_from_s3()  copie le zip depuis S3 dans insee_filosofi/.
+                           Si le zip est déjà présent, il n'est pas recopié.
+    2. extract_zip()       décompresse le zip et renvoie la liste des .gpkg.
 
 REMARQUES
     Le zip contient les données des trois zones du champ (France métropolitaine,
@@ -18,111 +19,69 @@ REMARQUES
     valeurs imputées : la colonne i_est_200 vaut alors 1.
 
 UTILISATION
-    Configurer le paramètre S3_BUCKET en renseignant le nom de son bucket S3 pour enregistrer
-    une copie des données.
+    Configurer le paramètre S3_BUCKET en renseignant le nom de son bucket S3.
     pip install -r requirements.txt
     python scripts/data_extraction_insee.py
 """
 
-import shutil
 import zipfile
 from pathlib import Path
 
-import requests
 import s3fs
-from requests.adapters import HTTPAdapter, Retry
-from tqdm import tqdm
 
 # --- Paramètres -------------------------------------------------------------
 
-S3_BUCKET = "nom_du_bucket"  # A configurer !
+S3_BUCKET = "cbouyer"
+ZIP_NAME = "Filosofi2021_carreaux_200m_gpkg.zip"  # nom du zip dans S3
 
-URL = "https://www.insee.fr/fr/statistiques/fichier/8735162/Filosofi2021_carreaux_200m_csv.zip"
-
+S3_PATH = f"{S3_BUCKET}/diffusion/{ZIP_NAME}"
 OUT_DIR = Path("insee_filosofi")
-ZIP_PATH = OUT_DIR / "Filosofi2021_carreaux_200m_csv.zip"
+ZIP_PATH = OUT_DIR / ZIP_NAME
 
 
-# --- Session HTTP avec reprise automatique ----------------------------------
+# --- Récupération depuis S3 -------------------------------------------------
 
 
-def make_session() -> requests.Session:
+def download_from_s3() -> None:
     """
-    Crée une session HTTP réutilisable avec des tentatives automatiques
-    en cas d'erreurs temporaires du serveur.
+    Copie le zip depuis le dossier diffusion du bucket S3 vers OUT_DIR.
     """
-    session = requests.Session()
-    retries = Retry(
-        total=8,  # jusqu'à 8 tentatives
-        backoff_factor=2,   # délai progressif entre les tentatives
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET"],
-    )
-    session.mount("https://", HTTPAdapter(max_retries=retries))
-    return session
+    if S3_BUCKET == "nom_du_bucket":
+        raise ValueError("Renseignez le nom du bucket dans S3_BUCKET.")
 
-
-# --- Téléchargement ---------------------------------------------------------
-
-
-def download_insee() -> list[Path]:
-    """
-    Télécharge le zip Filosofi 2021 (carreaux 200 m, format csv), le décompresse
-    dans OUT_DIR et renvoie la liste des fichiers csv extraits.
-    """
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     if ZIP_PATH.exists():
-        print(f"{ZIP_PATH} déjà présent, pas de nouveau téléchargement.")
-    else:
-        session = make_session()
-        # stream=True : le fichier est lu par morceaux, sans tout charger en mémoire
-        with session.get(URL, stream=True, timeout=(15, 120)) as resp:
-            resp.raise_for_status()
-            total = int(resp.headers.get("content-length", 0)) or None
-            tmp = ZIP_PATH.with_suffix(".tmp")
-            with open(tmp, "wb") as f, tqdm(
-                total=total, unit="B", unit_scale=True, desc="INSEE"
-            ) as pbar:
-                for chunk in resp.iter_content(chunk_size=1 << 20):
-                    f.write(chunk)
-                    pbar.update(len(chunk))
-            tmp.replace(ZIP_PATH)   # le .zip n'existe jamais à l'état partiel
-
-    with zipfile.ZipFile(ZIP_PATH) as z:
-        z.extractall(OUT_DIR)
-
-    csv_files = sorted(OUT_DIR.rglob("*.csv"))
-    print(f"Fichiers extraits : {[p.name for p in csv_files]}")
-    return csv_files
-
-
-# ---- Exportation des fichiers sur S3 ---------------------------------------
-
-
-def upload_to_s3(s3_bucket, files):
-    """
-    Enregistre les fichiers dans le dossier diffusion du bucket défini.
-    """
-    if not s3_bucket or s3_bucket == "nom_du_bucket":
-        print("Export S3 ignoré : renseignez le nom du bucket.")
+        print(f"{ZIP_PATH} déjà présent, pas de nouvelle copie.")
         return
 
     fs = s3fs.S3FileSystem(
         client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
     )
+    tmp = ZIP_PATH.with_suffix(".tmp")
+    fs.get(S3_PATH, str(tmp))
+    tmp.replace(ZIP_PATH)   # le .zip n'existe jamais à l'état partiel
+    print(f"Fichier copié depuis s3://{S3_PATH}")
 
-    for path in files:
-        file_path_out_s3 = f"{s3_bucket}/diffusion/{path.name}"
-        with open(path, "rb") as file_in:
-            with fs.open(file_path_out_s3, "wb") as file_out:
-                shutil.copyfileobj(file_in, file_out)
-        print(f"Fichier exporté vers s3://{file_path_out_s3}")
+
+# --- Décompression ----------------------------------------------------------
+
+
+def extract_zip() -> list[Path]:
+    """
+    Décompresse le zip dans OUT_DIR et renvoie la liste des fichiers .gpkg.
+    """
+    with zipfile.ZipFile(ZIP_PATH) as z:
+        z.extractall(OUT_DIR)
+
+    gpkg_files = sorted(OUT_DIR.rglob("*.gpkg"))
+    print(f"Fichiers extraits : {[p.name for p in gpkg_files]}")
+    return gpkg_files
 
 
 # ----- Exécution du script --------------------------------------------
-# Lance le téléchargement puis l'export sur S3.
+# Récupère le zip depuis S3 puis le décompresse.
 
 if __name__ == "__main__":
-    csv_files = download_insee()
-    upload_to_s3(S3_BUCKET, csv_files)
+    download_from_s3()
+    extract_zip()
