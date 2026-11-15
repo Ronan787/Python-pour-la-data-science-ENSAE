@@ -77,3 +77,21 @@ print(df.shape)
 print(df.dtypes)@@@@@@@
 print(df['annee_construction'].unique())
 '''
+
+# Carte 
+import folium
+
+limites_max = [(48.704826,2.156067), (48.71925,2.22383)]
+#carte = folium.Map(location = (df['latitude'].mean(), df['longitude'].mean()), zoom_start = 15)
+carte = folium.Map(location = (48.710999,2.207608), zoom_start = 12, max_bounds = True)
+carte.fit_bounds(limites_max)
+
+lim = (df['latitude'].between(limites_max[0][0], limites_max[1][0])) & (df['longitude'].between(limites_max[0][1], limites_max[1][1]))
+for row in df[lim].itertuples() : 
+    folium.Marker(
+        location = (row.latitude, row.longitude),
+        popup = row.classe_consommation_energie,
+        icon=folium.Icon(color='blue')
+    ).add_to(carte)
+
+carte.save('carte.html')
