@@ -32,3 +32,48 @@ first_lines = con.execute(f"""
 print(first_lines)
 
 # %% --- Analyse des variables préalable au nettoyage ---------------------
+
+import pandas as pd
+
+data = con.execute(f"""
+    SELECT *
+    FROM read_parquet('{FILE_PATH_S3}')
+""").df()
+
+# Analyse
+row, col = data.shape
+'''
+print((row, col))
+print('\n\n\n')
+print(data.dtypes)
+print('\n\n\n')
+print(data.isna().sum()/row)
+print('\n\n\n')
+print(data.duplicated().sum())
+print('\n\n\n')
+print(data['classe_consommation_energie'].value_counts())
+print('\n\n\n')
+print(data['classe_estimation_ges'].value_counts())
+print('\n\n\n')
+
+classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+print(data[(~data['classe_estimation_ges'].isin(classes)) & (~data['classe_consommation_energie'].isin(classes))])
+
+print(data['tr002_type_batiment_description'].unique())
+print(data['tr002_type_batiment_description'].value_counts())
+'''
+print(data['annee_construction'].between(1000, 2021).sum())
+
+
+# Sélections des données d'intérêt
+df = data.dropna()
+classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+df = df[(df['classe_estimation_ges'].isin(classes)) & (df['classe_consommation_energie'].isin(classes))]
+df = df[~(df['tr002_type_batiment_description'] == 'Bâtiment collectif à usage principal d\'habitation')]
+df = df[df['annee_construction'].between(1700, 2021)]
+df['annee_construction'] = pd.to_datetime(df['annee_construction'].astype(int).astype(str), format ='%Y')
+print(df.shape)
+'''
+print(df.dtypes)@@@@@@@
+print(df['annee_construction'].unique())
+'''
