@@ -87,3 +87,7 @@ nb_lines = con.execute(f"""
 
 print("Nombre de numero_dpe uniques :", nb_lines[0])
 ```
+# Statistiques descriptives
+
+## Carte classe_estimation_ges
+<iframe src="carte.html" width="100%" height="500px" style="border:none;"></iframe>
