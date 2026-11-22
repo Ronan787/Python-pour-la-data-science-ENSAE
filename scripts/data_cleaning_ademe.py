@@ -86,13 +86,24 @@ print(df['annee_construction'].unique())
 import folium
 import geopandas as gpd
 
+#Le code pour faire une carte
+#est le même pour les classes estimation_ges et les classes consommation_energie
+#on utilise une même fonction pour alléger le code 
+
+#nettoyage des données 
 df = data.copy()
+df = df[~(df['tr002_type_batiment_description'] == 'Bâtiment collectif à usage principal d\'habitation')]
+
+# On retire les classes aberrantes comme I, N, etc. 
 classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
 df = df[(df['classe_estimation_ges'].isin(classes)) & (df['classe_consommation_energie'].isin(classes))]
-df = df[~(df['tr002_type_batiment_description'] == 'Bâtiment collectif à usage principal d\'habitation')]
+
+# On ne garde que les bâtiments construits entre 1700 et 2021
+# pour retirer les bâtiments dont la date de construction est aberrante 
 df = df[df['annee_construction'].between(1700, 2021)]
 df['annee_construction'] = pd.to_datetime(df['annee_construction'].astype(int).astype(str), format ='%Y')
 
+# On calcule le taux de chaque classe par département 
 dpe_dep = (
     df
     .groupby('tv016_departement_code')
@@ -100,85 +111,51 @@ dpe_dep = (
     .value_counts(normalize = True)
     .rename('proportion')
     .reset_index()
-    #.reset_index()
 )
-print(dpe_dep[:5])
-dpe_dep['Legende1'] = ['{} : {} \n'.format(row.classe_estimation_ges, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
+
+# Quand la souris survole un département, une étiquette s'affiche 
+# avec le taux de chaque classe dans le département 
+# Ici, on crée la légende 
+dpe_dep['Legende'] = ['{} : {} '.format(row.classe_estimation_ges, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
 dpe_dep = (
     dpe_dep
-    .sort_values(by = ['tv016_departement_code', 'Legende1'], ascending=[True, True])
+    .sort_values(by = ['tv016_departement_code', 'Legende'], ascending=[True, True])
     .groupby('tv016_departement_code')
     ['Legende1']
     .sum()
-    .rename('Legende')
+    .rename('Legende_agregee')
     .reset_index()
-    #.reset_index()
 )
+
+# pour merge ensuite, on renomme la colonne avec le numéro des départements 
 dpe_dep = dpe_dep.rename(columns = {'tv016_departement_code' : 'Code_Offici_dep'})
-print((dpe_dep['Code_Offici_dep']).dtype)
-#print(dpe_dep[:5])
-'''
-limites_max = [(48.704826,2.156067), (48.71925,2.22383)]
-#carte = folium.Map(location = (df['latitude'].mean(), df['longitude'].mean()), zoom_start = 15)
-carte = folium.Map(location = (48.710999,2.207608), zoom_start = 12, max_bounds = True)
-carte.fit_bounds(limites_max)
 
-lim = (df['latitude'].between(limites_max[0][0], limites_max[1][0])) & (df['longitude'].between(limites_max[0][1], limites_max[1][1]))
-for row in df[lim].itertuples() : 
-    folium.Marker(
-        location = (row.latitude, row.longitude),
-        popup = row.classe_consommation_energie,
-        icon=folium.Icon(color='blue')
-    ).add_to(carte)
-
-carte.save('carte.html')
-'''
+# Fichier avec les contours des départements 
 path = '/home/onyxia/Python-pour-la-data-science-ENSAE/georef-france-departement/georef-france-departement-millesime.shp'
 departements_gdf = gpd.read_file(path, encoding = 'utf-8')
-#print(departements_gdf.columns)
+# Certaines colonnes ont le même nom dans departements_gdf donc on les renomme
 departements_gdf.columns = ['Annee', 'Code_Offici_dep', 'Nom_Officie_dep', 'Code_Offici_reg', 'Code_Offici_cour_dep', 'Nom_Officie_dep_maj', 'Nom_Officie_dep_min', 'Nom_Officie_reg', 'Code_Iso_31', 'Type', 'Statut_Depa', 'SIREN', 'Est_une_CTU', 'geometry']
-#print(departements_gdf.columns)
-departements_gdf = departements_gdf[departements_gdf['Code_Iso_31'] == 'FXX']
-print(type(departements_gdf['Code_Offici_dep'].iloc[0]))
-departements_gdf['Code_Offici_dep'] = departements_gdf['Code_Offici_dep'].apply(lambda x : x[2:4])
-#essonne_gdf = departements_gdf[departements_gdf['Nom_Officie_dep'] == 'essonne']
-#print(departements_gdf['Nom_Officie_dep'].unique())
 
-#essonne_gdf = essonne_gdf.set_index('Nom_Officie_dep')
-#essonne_gdf = essonne_gdf['geometry']
-#print(essonne_gdf[['Nom_Officie_dep', 'geometry']])
-#Conversion en GeoJSON
-#essonne_json = essonne_gdf.to_json()
-carte = folium.Map(location = (47,1), zoom_start = 6)
-#chloropeth = folium.Choropleth(geo_data = essonne_json)
-#chloropeth.add_to(carte)
+# On ne garde que les départements de France métropolitaine 
+departements_gdf = departements_gdf[departements_gdf['Code_Iso_31'] == 'FXX']
+
+# On met le numéro du département sous la bonne forme pour merge ensuite 
+# On passe de '['01']' à '01'
+departements_gdf['Code_Offici_dep'] = departements_gdf['Code_Offici_dep'].apply(lambda x : x[2:4])
 
 departements_gdf = departements_gdf.merge(dpe_dep, how = 'left', on = 'Code_Offici_dep')
-print(departements_gdf.head())
+#Conversion en GeoJSON
 departements_json = departements_gdf.to_json()
+
+# Création de la carte 
+carte = folium.Map(location = (47,1), zoom_start = 6)
 
 chloropeth = folium.Choropleth(geo_data = departements_json)
 chloropeth.geojson.add_child(folium.features.GeoJsonTooltip(
-    fields=['Legende'],
+    fields=['Legende_agregee'],
     aliases=['Légende :'], 
     label = False)
     )
 chloropeth.add_to(carte)
 
-'''
-folium.GeoJson(
-    essonne_json,
-    name='Essonne',
-    style_function=lambda feature: {
-        'fillColor': 'red',
-        'color': 'black',
-        'weight': 2,
-        'fillOpacity': 0.6
-    },
-    tooltip=folium.GeoJsonTooltip(
-        fields=['Nom_Officie_dep'],
-        aliases=['Département :']
-    )
-).add_to(carte)
-'''
-carte.save('carte.html')
+
