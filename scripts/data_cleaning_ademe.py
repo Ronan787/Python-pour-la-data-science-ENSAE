@@ -113,22 +113,31 @@ dpe_dep = (
     .reset_index()
 )
 
+# pour merge ensuite, on renomme la colonne avec le numéro des départements 
+dpe_dep = dpe_dep.rename(columns = {'tv016_departement_code' : 'Code_Offici_dep'})
+
+taux_passoires = (
+    dpe_dep
+    [dpe_dep['classe_estimation_ges'].isin(['F', 'G'])]
+    .groupby('Code_Offici_dep')
+    .sum()
+    .reset_index()
+)
+
 # Quand la souris survole un département, une étiquette s'affiche 
 # avec le taux de chaque classe dans le département 
 # Ici, on crée la légende 
 dpe_dep['Legende'] = ['{} : {} '.format(row.classe_estimation_ges, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
 dpe_dep = (
     dpe_dep
-    .sort_values(by = ['tv016_departement_code', 'Legende'], ascending=[True, True])
-    .groupby('tv016_departement_code')
-    ['Legende1']
+    .sort_values(by = ['Code_Offici_dep', 'Legende'], ascending=[True, True])
+    .groupby('Code_Offici_dep')
+    ['Legende']
     .sum()
     .rename('Legende_agregee')
     .reset_index()
 )
 
-# pour merge ensuite, on renomme la colonne avec le numéro des départements 
-dpe_dep = dpe_dep.rename(columns = {'tv016_departement_code' : 'Code_Offici_dep'})
 
 # Fichier avec les contours des départements 
 path = '/home/onyxia/Python-pour-la-data-science-ENSAE/georef-france-departement/georef-france-departement-millesime.shp'
@@ -150,12 +159,21 @@ departements_json = departements_gdf.to_json()
 # Création de la carte 
 carte = folium.Map(location = (47,1), zoom_start = 6)
 
-chloropeth = folium.Choropleth(geo_data = departements_json)
+chloropeth = folium.Choropleth(
+    geo_data = departements_json,
+    data = taux_passoires,
+    columns = ['Code_Offici_dep', 'proportion'],
+    key_on = 'feature.properties.Code_Offici_dep',
+    fill_color = 'YlOrRd',
+    fill_opacity = 0.5,
+    line_opacity = 1,
+    legend_name = 'Taux de passoires dans le département'
+)
+
 chloropeth.geojson.add_child(folium.features.GeoJsonTooltip(
     fields=['Legende_agregee'],
-    aliases=['Légende :'], 
+    aliases=['Proportion :'], 
     label = False)
     )
 chloropeth.add_to(carte)
-
-
+carte.save('carte.html')
