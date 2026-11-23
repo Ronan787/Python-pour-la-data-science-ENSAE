@@ -78,13 +78,19 @@ df['annee_construction'] = pd.to_datetime(df['annee_construction'].astype(int).a
 print(df.shape)
 '''
 '''
-print(df.dtypes)@@@@@@@
+print(df.dtypes)
 print(df['annee_construction'].unique())
 '''
 
 # Carte 
 import folium
 import geopandas as gpd
+#from data_extraction_ademe.py import upload_to_s3
+
+# Fichier avec les contours des départements 
+BUCKET_R = "ron"
+path = f"s3://{BUCKET_R}/diffusion/georef-france-departement/georef-france-departement-millesime.shp"
+#path = '/home/onyxia/Python-pour-la-data-science-ENSAE/georef-france-departement/georef-france-departement-millesime.shp'
 
 #Le code pour faire une carte
 #est le même pour les classes estimation_ges et les classes consommation_energie
@@ -139,8 +145,6 @@ dpe_dep = (
 )
 
 
-# Fichier avec les contours des départements 
-path = '/home/onyxia/Python-pour-la-data-science-ENSAE/georef-france-departement/georef-france-departement-millesime.shp'
 departements_gdf = gpd.read_file(path, encoding = 'utf-8')
 # Certaines colonnes ont le même nom dans departements_gdf donc on les renomme
 departements_gdf.columns = ['Annee', 'Code_Offici_dep', 'Nom_Officie_dep', 'Code_Offici_reg', 'Code_Offici_cour_dep', 'Nom_Officie_dep_maj', 'Nom_Officie_dep_min', 'Nom_Officie_reg', 'Code_Iso_31', 'Type', 'Statut_Depa', 'SIREN', 'Est_une_CTU', 'geometry']
@@ -177,3 +181,29 @@ chloropeth.geojson.add_child(folium.features.GeoJsonTooltip(
     )
 chloropeth.add_to(carte)
 carte.save('carte.html')
+
+import s3fs
+import shutil
+
+def upload_to_s3(s3_bucket, file):
+    """
+    Enregistre le fichier dans le dossier diffusion du bucket défini.
+    """
+    if not s3_bucket or s3_bucket == "nom_du_bucket":
+        print("Export S3 ignoré : renseignez le nom du bucket.")
+        return
+
+    fs = s3fs.S3FileSystem(
+        client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
+    )
+
+    file_path_out_s3 = "{}/diffusion/{}".format(s3_bucket, file)
+
+    with open(file, "rb") as file_in:
+        with fs.open(file_path_out_s3, "wb") as file_out:
+            shutil.copyfileobj(file_in, file_out)
+
+    print(f"Fichier exporté vers s3://{file_path_out_s3}")
+
+upload_to_s3(BUCKET_R, 'carte.html')
+
