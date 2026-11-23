@@ -1,5 +1,5 @@
 ---
-title: "Analyse des diagnostics de performance énergétique"
+title: "Les écoquartiers à l'épreuve des DPE"
 subtitle: "Projet Python — ADEME"
 author: "Maëlle Boutbal - Capucine Bouyer - Ronan Gorin"
 date: today
@@ -15,75 +15,41 @@ jupyter: python3
 execute:
   echo: true
   warning: false
+bibliography: references.bib
+link-citations: true
 ---
 
 # Introduction
 
-## Objectif du projet
+## Contexte et problématique
 
-## Sommaire 
-Le travail est organisé en plusieurs étapes :
+La performance énergétique des logements constitue un enjeu central de la transition écologique et de la lutte contre la précarité énergétique. Les récents épisodes caniculaires ont par ailleurs mis en lumière les inégalités face aux fortes chaleurs et leurs conséquences sanitaires, rappelant que les conditions d'habitat importent en toute saison.
 
-1. Récupération des données DPE depuis l'API de l'ADEME et conversion au format parquet
-2. 
+Instauré en 2006, le diagnostic de performance énergétique (DPE) est un instrument central des politiques de rénovation énergétique. Les données publiées par l'ADEME permettent d'étudier les performances énergétiques théoriques du parc résidentiel. Les travaux successifs du Service des données et études statistiques (SDES) ont ainsi documenté les disparités selon les caractéristiques des logements et les territoires, à travers plusieurs estimations nationales entre 2018 et 2025 [@sdes2018; @sdes2025]. Ces disparités ont également été analysées à des échelles plus fines, notamment dans les quartiers prioritaires de la politique de la ville (QPV), où se cumulent fréquemment des vulnérabilités énergétiques et socio-économiques [@onpv2020].
 
-# Présentation des données
+Si la littérature s'est largement attachée à caractériser les populations et les territoires les plus vulnérables [@insee2025], notre projet s'intéresse à une autre catégorie de quartiers : ceux reconnus pour leur démarche environnementale. Lancés en 2009 et dotés d'un label national depuis 2012 [@ministere2024], les ÉcoQuartiers constituent un instrument des politiques d'aménagement urbain durable. Les collectivités volontaires adhèrent à une charte de 20 engagements couvrant quatre dimensions : environnementale, sociale, économique et de gouvernance. Cette démarche leur permet de bénéficier d'un accompagnement technique et d'obtenir le label officiel "ÉcoQuartier". Toutefois, la labellisation repose sur une appréciation multidimensionnelle des projets, sans seuil national uniforme de performance énergétique. Dès lors, nous cherchons à déterminer si les écoquartiers présentent effectivement de meilleures performances énergétiques que les autres quartiers, que cet éventuel avantage résulte de la sélection des projets ou des aménagements réalisés, ou si leur exemplarité relève principalement d'un effet de labellisation.
 
-## Source
+L'exploitation des données DPE appelle toutefois plusieurs précautions méthodologiques. Premièrement, les diagnostics ne constituent pas un échantillon exhaustif et représentatif du parc résidentiel, ce qui nécessite des redressements statistiques pour produire des estimations nationales représentatives de l'ensemble du parc de logement [@sdes2025; @girard2022]. Deuxièmement, les consommations théoriques peuvent différer sensiblement des consommations effectives des ménages, notamment en raison de leurs comportements d'ajustement [@astier2024]. Troisièmement, l'étiquette énergétique constitue également un signal économique, valorisé sur le marché immobilier, susceptible de susciter des comportements stratégiques autour des seuils de classification [@civel2025]. Ces difficultés peuvent conduire à produire des estimations différentes selon la méthode de correction retenue [@girard2022].
+
+## Objectif de ce projet
+
+Notre projet propose une première exploration empirique de cette question à partir des données DPE de l'ADEME. Nous commencerons par la collecte, le nettoyage et l'analyse descriptive des données à l'échelle nationale, afin de caractériser le parc résidentiel et ses disparités énergétiques. Nous réaliserons ensuite un **zoom sur les écoquartiers**, en comparant leurs performances à celles des territoires environnants.
+
+Sans chercher à identifier un effet causal de la labellisation, cette analyse vise à déterminer si les données fournissent de premiers indices d'une meilleure performance énergétique des écoquartiers, ou si leur exemplarité affichée doit être nuancée.
+
+# Champ de l'étude 
+
+# Sources et extraction des données
+
+## Les Diagnostiques de Performance Energétiques (DPE)
 
 Les données proviennent du jeu de données **DPE Logements avant juillet 2021**, accessible via l'API Data Fair de l'ADEME, correspondant aux anciens diagnostics réalisés avant l'entrée en vigueur du nouveau DPE en juillet 2021. 
 
-## Variables retenues
+## Les EcoQuartiers
+ 
 
-L'extraction conserve notamment les variables suivantes :
+# Bibliographie
 
-| Dimension | Variables | Description |
-|---|---|---|
-| Identification | `numero_dpe` | Identifiant du diagnostic |
-| Date | `date_etablissement_dpe` | Date d'établissement du diagnostic |
-| Localisation | `code_insee_commune_actualise`, `latitude`, `longitude` | Localisation géographique |
-| Énergie | `classe_consommation_energie`, `consommation_energie` | Classe et consommation énergétique |
-| Émissions | `classe_estimation_ges`, `estimation_ges` | Classe et estimation des émissions de gaz à effet de serre |
-| Logement | `tr002_type_batiment_description`, `annee_construction`, `surface_thermique_lot` | Caractéristiques du bâtiment |
-| Méthode | `nom_methode_dpe`, `version_methode_dpe` | Méthode utilisée pour établir le diagnostic |
+::: {#refs}
+:::
 
-
-# Méthodologie d'extraction et de stockage
-
-## Téléchargement depuis l'API
-
-Le script `1.data_extraction_ademe.py` réalise l'extraction des données par requêtes successives à l'API de l'ADEME.
-
-## Stockage sur S3
-
-Le fichier final est enregistré sur le stockage objet du SSPCloud, à l'emplacement :
-
-` s3://mboutbal/diffusion/dpe.parquet `
-
-# Exploration initiale des données
-
-## Connexion au fichier Parquet
-
-Le fichier est ensuite interrogé directement depuis S3 avec DuckDB, sans qu'il soit nécessaire de charger l'intégralité du jeu de données en mémoire.
-
-```{python}
-import duckdb
-
-MY_BUCKET = "mboutbal"
-FILE_PATH_S3 = f"s3://{MY_BUCKET}/diffusion/dpe.parquet"
-
-con = duckdb.connect()
-```
-
-## Vérifications
-
-Nous commençons par compter le nombre total de lignes ainsi que le nombre de diagnostics distincts identifiés par `numero_dpe`.
-
-```{python}
-nb_lines = con.execute(f"""
-    SELECT COUNT(DISTINCT numero_dpe)
-    FROM read_parquet('{FILE_PATH_S3}')
-""").fetchone()
-
-print("Nombre de numero_dpe uniques :", nb_lines[0])
-```
