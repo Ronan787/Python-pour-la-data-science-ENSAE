@@ -53,3 +53,18 @@ Les données proviennent du jeu de données **DPE Logements avant juillet 2021**
 ::: {#refs}
 :::
 
+print("Nombre de numero_dpe uniques :", nb_lines[0])
+```
+# Statistiques descriptives
+
+## Carte classe_estimation_ges
+```{python}
+import duckdb
+
+BUCKET_R = "ron"
+R_PATH_S3 = f"s3://{BUCKET_R}/diffusion/carte.html"
+
+con = duckdb.connect()
+```
+
+<iframe src='carte.html' width="100%" height="500px" style="border:none;"></iframe>
