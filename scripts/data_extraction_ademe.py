@@ -1,257 +1,17 @@
-# """
-# OBJECTIF
-#     Télécharger le jeu de données ADEME « DPE Logements (avant juillet 2021) »
-#     et l'enregistrer au format parquet.
+"""
+OBJECTIF
+    Télécharger le jeu de données ADEME « DPE Logements (avant juillet 2021) »
+    et l'enregistrer au format parquet.
 
-# SOURCE
-#     API Data Fair de data.ademe.fr (aucune clé nécessaire).
+SOURCE
+    API de data.ademe.fr (aucune clé nécessaire).
 
-# ÉTAPES
-#     1. download_from_api()  télécharge par pages de API_PAGE_SIZE lignes, regroupées en
-#                       fichiers intermédiaires de ROWS_PER_FILE lignes
-#                       (dpe_ademe/dpe_parts/part_XXXXX.parquet).
-#     2. merge_parts()  fusionne les fichiers intermédiaires en dpe_ademe/dpe.parquet.
-#     3. upload_to_S3()  enregistre le fichier dans S3
-
-# CHECKPOINT
-#     Permet une relance après interruption. En cas d'interruption, relancer le script
-#     directement. Le checkpoint n'est écrit qu'après l'écriture complète d'un fichier
-#     intermédiaire : au plus ROWS_PER_FILE lignes sont retéléchargées, sans doublon.
-#     Si TYPES, SORT_FIELD ou API_PAGE_SIZE sont modifiés, supprimer d'abord le dossier
-#     dpe_ademe/ avant de relancer.
-
-# UTILISATION
-#     Configurer le paramètre S3_BUCKET en renseignant le nom de son bucket S3 pour enregistrer
-#     une copie des données.
-#     pip install -r requirements.txt
-#     python scripts/data_extraction_ademe.py
-# """
-
-# import json
-# import shutil
-# from pathlib import Path
-# from urllib.parse import urlencode
-
-# import pandas as pd
-# import pyarrow as pa
-# import pyarrow.parquet as pq
-# import requests
-# import s3fs
-# from requests.adapters import HTTPAdapter, Retry
-# from tqdm import tqdm
-
-# # --- Paramètres -------------------------------------------------------------
-
-# S3_BUCKET = "nom_du_bucket"  # A configurer !
-
-# URL = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe-france/lines"
-# API_PAGE_SIZE = 10_000       # lignes par requête
-# ROWS_PER_FILE = 100_000       # lignes par fichier intermédiaire
-# SORT_FIELD = "numero_dpe"    # identifiant unique, nécessaire à la pagination
-
-# OUT_DIR = Path("dpe_ademe")
-# PARTS_DIR = OUT_DIR / "dpe_parts"          # fichiers intermédiaires
-# FINAL_PATH = OUT_DIR / "dpe.parquet"       # fichier final (dossier de travail)
-# CHECKPOINT = OUT_DIR / "dpe.checkpoint.json"  # fichier JSON qui mémorise l'état du téléchargement.
-
-# TYPES = {
-#     "numero_dpe": pa.string(),
-#     "date_etablissement_dpe": pa.date32(),            # format date
-#     "geo_adresse": pa.string(),
-#     "code_insee_commune_actualise": pa.string(),      # texte
-#     "tv016_departement_code": pa.string(),            # texte : "2A", "2B", "01"
-#     "latitude": pa.float64(),
-#     "longitude": pa.float64(),
-#     "classe_consommation_energie": pa.string(),
-#     "consommation_energie": pa.float32(),
-#     "classe_estimation_ges": pa.string(),
-#     "estimation_ges": pa.float32(),
-#     "tr002_type_batiment_description": pa.string(),
-#     "annee_construction": pa.float32(),
-#     "surface_thermique_lot": pa.float32(),
-#     "nom_methode_dpe": pa.string(),
-#     "version_methode_dpe": pa.string(),
-#     "tr001_modele_dpe_type_libelle": pa.string(),
-# }
-
-# COLUMNS = list(TYPES)
-
-# # Schéma Arrow commun à tous les fichiers : garantit que les fichiers intermédiaires
-# # et le fichier final utilisent les mêmes colonnes et les mêmes types, même si
-# # certaines colonnes sont vides.
-# SCHEMA = pa.schema(TYPES.items())
-
-
-# # --- Session HTTP avec reprise automatique ----------------------------------
-
-
-# def make_session() -> requests.Session:
-#     """
-#     Crée une session HTTP réutilisable avec des tentatives automatiques
-#     en cas d'erreurs temporaires du serveur.
-#     """
-#     session = requests.Session()
-#     retries = Retry(
-#         total=8,  # jusqu'à 8 tentatives
-#         backoff_factor=2,   # délai progressif entre les tentatives
-#         status_forcelist=[429, 500, 502, 503, 504],
-#         allowed_methods=["GET"],
-#     )
-#     session.mount("https://", HTTPAdapter(max_retries=retries))
-#     return session
-
-
-# # --- Conversion de lignes JSON en table Arrow -------------------------------
-
-
-# def rows_to_table(rows: list[dict]) -> pa.Table:
-#     """
-#     Convertit une liste de lignes JSON renvoyées par l'API en table Arrow.
-#     Crée un DataFrame pandas et sélectionne les colonnes attendues.
-#     Convertit chaque colonne vers un type compatible avec TYPES.
-#     Renvoie une table Arrow utilisant le schéma commun.
-#     """
-#     df = pd.DataFrame(rows).reindex(columns=COLUMNS)   # colonne absente -> vide
-#     for col, typ in TYPES.items():
-#         # errors="coerce" transforme les valeurs non convertibles en NaN au lieu de
-#         # provoquer une erreur.
-#         if pa.types.is_floating(typ):
-#             df[col] = pd.to_numeric(df[col], errors="coerce")
-#         elif pa.types.is_date(typ):
-#             df[col] = pd.to_datetime(df[col], format="%Y-%m-%d", errors="coerce").dt.date
-#         else:
-#             df[col] = df[col].astype("string")
-#     return pa.Table.from_pandas(df, schema=SCHEMA, preserve_index=False)
-
-
-# # --- Téléchargement ---------------------------------------------------------
-
-
-# def download_from_api() -> None:
-#     """
-#     Télécharge toutes les pages de l'API, les convertit en Parquet et
-#     sauvegarde régulièrement l'état d'avancement pour permettre la reprise.
-#     """
-#     PARTS_DIR.mkdir(parents=True, exist_ok=True)
-#     session = make_session()
-
-#     # Reprise ou initialisation du téléchargement
-#     part_idx, total, received = 0, None, 0
-#     if CHECKPOINT.exists():
-#         state = json.loads(CHECKPOINT.read_text(encoding="utf-8"))
-#         if state["next_url"] is None:
-#             print("Téléchargement déjà terminé.")
-#             return
-#         url, total = state["next_url"], state["total"]
-#         part_idx, received = state["part"], state["received"]
-#         print(f"Reprise au fichier {part_idx} ({received} lignes déjà enregistrées).")
-#     else:
-#         # SORT_FIELD : API ADEME trie les données selon le champ numero_dpe id unique
-#         params = {"size": API_PAGE_SIZE, "select": ",".join(COLUMNS), "sort": SORT_FIELD}
-#         url = f"{URL}?{urlencode(params)}"
-
-#     buffer: list[dict] = []
-#     # Barre de progression
-#     pbar = tqdm(unit="lignes", total=total, initial=received)
-
-#     # Téléchargement page par page : requête GET
-#     while url:
-#         resp = session.get(url, timeout=(15, 120))
-#         resp.raise_for_status()
-#         payload = resp.json()
-
-#         if total is None:
-#             total = payload.get("total")
-#             pbar.total = total
-
-#         results = payload.get("results", [])
-#         buffer.extend(results)
-#         pbar.update(len(results))
-#         url = payload.get("next")
-
-#         # Écriture d'un fichier quand le tampon est plein, ou à la dernière page
-#         if len(buffer) >= ROWS_PER_FILE or url is None:
-#             if buffer:
-#                 part = PARTS_DIR / f"part_{part_idx:05d}.parquet"
-#                 tmp = part.with_suffix(".tmp")
-#                 # Convertit les données et les écrit au format Parquet compressé.
-#                 pq.write_table(rows_to_table(buffer), tmp, compression="snappy")
-#                 tmp.replace(part)          # un .parquet n'existe jamais à l'état partiel
-#                 received += len(buffer)
-#                 part_idx += 1
-#                 buffer = []
-#             # Sauvegarde l'état courant après l'écriture du fichier.
-#             # Si le programme s'arrête ensuite, il pourra reprendre à l'URL
-#             # suivante sans retélécharger les fichiers déjà enregistrés.
-#             CHECKPOINT.write_text(
-#                 json.dumps({"next_url": url, "total": total,
-#                             "part": part_idx, "received": received}),
-#                 encoding="utf-8",
-#             )
-#     pbar.close()
-#     print(f"Téléchargement terminé : {received} lignes dans {part_idx} fichiers.")
-
-
-# # --- Fusion en un seul fichier ----------------------------------------------
-
-
-# def merge_parts() -> None:
-#     """
-#     Fusionne tous les fichiers intermédiaires en un seul fichier Parquet.
-#     Le traitement se fait fichier par fichier afin d'éviter de charger
-#     l'ensemble des données en mémoire.
-#     """
-#     # Recherche tous les fichiers part_XXXXX.parquet et les trie par nom.
-#     parts = sorted(PARTS_DIR.glob("part_*.parquet"))
-#     if not parts:
-#         print("Aucun fichier à fusionner.")
-#         return
-#     tmp = FINAL_PATH.with_suffix(".tmp")
-#     # ParquetWriter permet d'écrire plusieurs tables successives dans un seul fichier Parquet.
-#     with pq.ParquetWriter(tmp, SCHEMA, compression="snappy") as writer:
-#         for p in tqdm(parts, desc="Fusion", unit="fichier"):
-#             writer.write_table(pq.read_table(p, schema=SCHEMA))
-#     tmp.replace(FINAL_PATH)
-
-#     # Vérification du nombre de lignes
-#     n_final = pq.ParquetFile(FINAL_PATH).metadata.num_rows
-#     n_parts = sum(pq.ParquetFile(p).metadata.num_rows for p in parts)
-#     if n_final != n_parts:
-#         raise RuntimeError(f"Incohérence : {n_final} lignes (final) vs {n_parts} (fichiers).")
-#     print(f"Fichier final -> {FINAL_PATH} ({n_final} lignes)")
-
-
-# # ---- Exportation du fichier sur S3 -----------------------
-
-
-# def upload_to_s3(s3_bucket):
-#     """
-#     Enregistre le fichier dans le dossier diffusion du bucket défini.
-#     """
-#     if not s3_bucket or s3_bucket == "nom_du_bucket":
-#         print("Export S3 ignoré : renseignez le nom du bucket.")
-#         return
-
-#     fs = s3fs.S3FileSystem(
-#         client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
-#     )
-
-#     file_path_out_s3 = f"{s3_bucket}/diffusion/dpe.parquet"
-
-#     with open(FINAL_PATH, "rb") as file_in:
-#         with fs.open(file_path_out_s3, "wb") as file_out:
-#             shutil.copyfileobj(file_in, file_out)
-
-#     print(f"Fichier exporté vers s3://{file_path_out_s3}")
-
-
-# # ----- Exécution du script --------------------------------------------
-# # Lance le téléchargement, la fusion des fichiers Parquet et l'export sur S3.
-
-# if __name__ == "__main__":
-#     download_from_api()
-#     merge_parts()
-#     upload_to_s3(S3_BUCKET)
+UTILISATION
+    Configurer le paramètre S3_BUCKET en renseignant le nom de son bucket S3 pour enregistrer
+    une copie des données (line 136)
+    pip install -r requirements.txt
+    python scripts/data_extraction_ademe.py
+"""
 
 from pathlib import Path
 
@@ -263,30 +23,29 @@ import requests
 import s3fs
 from tqdm.auto import tqdm
 
-
 # %% 1. Explorer le dictionnaire ADEME
 URL = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe-france"
 
 
 def lire_api(url, params=None):
-    """Envoie une requête GET à l'ADEME et lit la réponse JSON."""
+    """Requête GET à l'ADEME et lecture de la réponse JSON."""
     reponse = requests.get(url, params=params, timeout=120)
-    reponse.raise_for_status()  # Signale une erreur HTTP
+    reponse.raise_for_status()  # signale une erreur HTTP
     return reponse.json()
 
 
-# Extraction du dictionnaire des variables
+# Extraction du schéma des variables
 dictionnaire_var = pd.DataFrame(lire_api(URL)["schema"])
-dictionnaire_var[["key", "title", "description", "type", "format"]]
+print(dictionnaire_var[["key", "title", "description", "type", "format"]])
 
 
 # %% 2. Choisir les colonnes et leurs types
-# À gauche, le nom de la variable. À droite, son type dans le Parquet.
+# Création d'un dictionnaire des variables choisies avec leur type souhaité
 types_colonnes = {
     "numero_dpe": pa.string(),
     "nom_methode_dpe": pa.string(),
     "version_methode_dpe": pa.string(),
-    "date_etablissement_dpe": pa.date32(),  # Date sans heure.
+    "date_etablissement_dpe": pa.date32(),  # Date sans heure
     "annee_construction": pa.int64(),
     "tr001_modele_dpe_type_libelle": pa.string(),
     "tr002_type_batiment_description": pa.string(),
@@ -302,27 +61,32 @@ types_colonnes = {
     "geo_score": pa.float64(),
 }
 
+# Liste du nom des variables
 colonnes = list(types_colonnes)
-schema = pa.schema(list(types_colonnes.items()))  # fixe les types pour toutes les pages
-fichier = Path("dpe_ademe/dpe.parquet")
 
 
 # %% 3. Télécharger, vérifier et enregistrer le Parquet
+
+# Paramètres pour la requête API d'extraction des données
 params = {
-    "select": ",".join(colonnes),  # Demande les colonnes choisies
-    "sort": "numero_dpe",          # Trie les lignes par notre id unique
-    "size": 10_000,                # Demande jusqu'à 10 000 lignes à la fois
+    "select": ",".join(colonnes),  # Colonnes choisies
+    "sort": "numero_dpe",          # Trie des lignes par notre id unique
+    "size": 10_000,                # Jusqu'à 10 000 lignes par requête
 }
 
-# La première page contient des lignes et le nb total d'observations
-page_dpe = lire_api(URL + "/lines", params)
-nombre_lignes_attendu = page_dpe["total"]
+# "page_dpe" : var qui contient la réponse de l'API pour la page en cours de traitement
+page_dpe = lire_api(URL + "/lines", params)  # Récupération de la 1ère page (initialisation)
+nombre_lignes_attendu = page_dpe["total"]    # Récupération du nb d'obs à extraire
 
-# Toutes les pages sont écrites dans le même fichier de travail.
+# Préparation de la sortie du fichier parquet
+schema = pa.schema(list(types_colonnes.items()))
+
+# Création du chemin de sauvegarde dans le répertoire de travail
+fichier = Path("dpe_ademe/dpe.parquet")
 fichier.parent.mkdir(exist_ok=True)
 temporaire = fichier.with_suffix(".tmp")
 
-# Barre de progression dans extraction à partir du nombre total de lignes attendu
+# Ajout d'une barre de progression dans l'extraction (/nb total attendu)
 with (
     pq.ParquetWriter(temporaire, schema) as parquet,
     tqdm(
@@ -333,17 +97,13 @@ with (
 ):
     while True:
         donnees = pd.DataFrame(page_dpe["results"], columns=colonnes)
-
         donnees["date_etablissement_dpe"] = pd.to_datetime(
             donnees["date_etablissement_dpe"], format="%Y-%m-%d"
-        ).dt.date  # Convertit les dates
-
+        ).dt.date  # Conversion de la date avant application du schéma
         table = pa.Table.from_pandas(donnees, schema=schema, preserve_index=False)
-        parquet.write_table(table)  # Écrit la page dans le Parquet avec les types choisis
-
-        barre_progression.update(table.num_rows)  # barre de prgression avance du nb de lignes écrites
-    
-        lien_suivant = page_dpe.get("next")  # Charge la page suivante
+        parquet.write_table(table)  # écriture du parquet avec les types choisis
+        barre_progression.update(table.num_rows)  # avancement barre de progression
+        lien_suivant = page_dpe.get("next")  # chargement de la page suivante
         if not lien_suivant:
             break
         page_dpe = lire_api(lien_suivant)
@@ -368,13 +128,16 @@ if nombre_ids != nombre_lignes:
 # Le fichier prend son nom final après les deux vérifications
 temporaire.replace(fichier)
 print(f"{nombre_lignes:,} lignes, chacune avec un numéro de DPE unique.")
-print(pq.read_schema(fichier))  # Affiche les types réellement stockés.
+print(pq.read_schema(fichier))
 
 
 # %% 4. Enregistrer le Parquet dans le bucket S3 si extraction réussie
+
+S3_BUCKET = "mboutbal"  # Nom du bucket à paramétrer
+
 s3 = s3fs.S3FileSystem(
     client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
 )
 
-s3.put(str(fichier), "mboutbal/diffusion/dpe_date_22_11.parquet")
+s3.put(str(fichier), f"{S3_BUCKET}/diffusion/dpe_date_22_11.parquet")
 print("Fichier copié dans le bucket.")
