@@ -23,21 +23,118 @@ link-citations: true
 
 ## Contexte et problématique
 
-La performance énergétique des logements constitue un enjeu central de la transition écologique et de la lutte contre la précarité énergétique. Les récents épisodes caniculaires ont par ailleurs mis en lumière les inégalités face aux fortes chaleurs et leurs conséquences sanitaires, rappelant que les conditions d'habitat importent en toute saison.
+La performance énergétique des logements constitue un enjeu majeur de la transition écologique et de la réduction de la vulnérabilité énergétique des ménages. Les logements les moins performants, communément appelés passoires thermiques et classés F ou G au diagnostic de performance énergétique (DPE), présentent des besoins énergétiques élevés, susceptibles d'alourdir les dépenses de chauffage de leurs occupants et de contribuer à des situations de précarité énergétique^[La précarité énergétique correspond à une difficulté effective à satisfaire ses besoins élémentaires en énergie tandis que la vulnérabilité énergétique désigne une exposition au risque de précarité.].
 
-Instauré en 2006, le diagnostic de performance énergétique (DPE) est un instrument central des politiques de rénovation énergétique. Les données publiées par l'ADEME permettent d'étudier les performances énergétiques théoriques du parc résidentiel. Les travaux successifs du Service des données et études statistiques (SDES) ont ainsi documenté les disparités selon les caractéristiques des logements et les territoires, à travers plusieurs estimations nationales entre 2018 et 2025 [@sdes2018; @sdes2025]. Ces disparités ont également été analysées à des échelles plus fines, notamment dans les quartiers prioritaires de la politique de la ville (QPV), où se cumulent fréquemment des vulnérabilités énergétiques et socio-économiques [@onpv2020].
+Instauré en 2006, le diagnostic de performance énergétique (DPE) est un instrument central des politiques de rénovation énergétique. Obligatoire lors de la vente ou de la location d'un logement, il informe sur sa consommation énergétique et ses émissions de gaz à effet de serre. Les travaux successifs du Service des données et études statistiques (SDES) ont ainsi documenté les disparités selon les caractéristiques des logements et les territoires, à travers plusieurs estimations nationales entre 2018 et 2025 [@sdes2018; @sdes2025]. Ces disparités ont également été analysées à des échelles plus fines, notamment dans les quartiers prioritaires de la politique de la ville (QPV), où se cumulent fréquemment des vulnérabilités énergétiques et socio-économiques [@onpv2020].
 
 Si la littérature s'est largement attachée à caractériser les populations et les territoires les plus vulnérables [@insee2025], notre projet s'intéresse à une autre catégorie de quartiers : ceux reconnus pour leur démarche environnementale. Lancés en 2009 et dotés d'un label national depuis 2012 [@ministere2024], les ÉcoQuartiers constituent un instrument des politiques d'aménagement urbain durable. Les collectivités volontaires adhèrent à une charte de 20 engagements couvrant quatre dimensions : environnementale, sociale, économique et de gouvernance. Cette démarche leur permet de bénéficier d'un accompagnement technique et d'obtenir le label officiel "ÉcoQuartier". Toutefois, la labellisation repose sur une appréciation multidimensionnelle des projets, sans seuil national uniforme de performance énergétique. Dès lors, nous cherchons à déterminer si les écoquartiers présentent effectivement de meilleures performances énergétiques que les autres quartiers, que cet éventuel avantage résulte de la sélection des projets ou des aménagements réalisés, ou si leur exemplarité relève principalement d'un effet de labellisation.
 
-L'exploitation des données DPE appelle toutefois plusieurs précautions méthodologiques. Premièrement, les diagnostics ne constituent pas un échantillon exhaustif et représentatif du parc résidentiel, ce qui nécessite des redressements statistiques pour produire des estimations nationales représentatives de l'ensemble du parc de logement [@sdes2025; @girard2022]. Deuxièmement, les consommations théoriques peuvent différer sensiblement des consommations effectives des ménages, notamment en raison de leurs comportements d'ajustement [@astier2024]. Troisièmement, l'étiquette énergétique constitue également un signal économique, valorisé sur le marché immobilier, susceptible de susciter des comportements stratégiques autour des seuils de classification [@civel2025]. Ces difficultés peuvent conduire à produire des estimations différentes selon la méthode de correction retenue [@girard2022].
+L'exploitation des données DPE appelle toutefois plusieurs précautions méthodologiques. Premièrement, les diagnostics ne constituent pas un échantillon exhaustif et représentatif du parc résidentiel, ce qui nécessite des redressements statistiques pour produire des estimations nationales représentatives de l'ensemble du parc de logement [@sdes2025]. Deuxièmement, la consommation théorique en énergie, mesurée par le DPE, peut différer sensiblement de la consommation effective des ménages, notamment en raison de leurs comportements d'ajustement [@astier2024]. Troisièmement, l'étiquette énergétique constitue également un signal économique, valorisé sur le marché immobilier, susceptible de susciter des comportements stratégiques autour des seuils de classification [@civel2025]. Ces difficultés peuvent conduire à produire des estimations différentes selon la méthode de correction retenue [@girard2022].
 
 ## Objectif de ce projet
 
-Notre projet propose une première exploration empirique de cette question à partir des données DPE de l'ADEME. Nous commencerons par la collecte, le nettoyage et l'analyse descriptive des données à l'échelle nationale, afin de caractériser le parc résidentiel et ses disparités énergétiques. Nous réaliserons ensuite un **zoom sur les écoquartiers**, en comparant leurs performances à celles des territoires environnants.
+Notre projet propose une première exploration empirique de cette question à partir des données DPE de l'ADEME. Nous commencerons par la collecte, le nettoyage et l'analyse descriptive des données à l'échelle nationale, afin de caractériser le parc résidentiel et ses disparités énergétiques. Nous réaliserons ensuite un zoom sur les écoquartiers, en comparant leurs performances à celles des territoires environnants. 
 
-Sans chercher à identifier un effet causal de la labellisation, cette analyse vise à déterminer si les données fournissent de premiers indices d'une meilleure performance énergétique des écoquartiers, ou si leur exemplarité affichée doit être nuancée.
+Sans chercher à identifier un effet causal de la labellisation, cette analyse vise à déterminer si les données mettent en évidence de meilleures performances énergétiques dans les écoquartiers, ou si leur exemplarité affichée doit être nuancée.
 
 # Champ de l'étude 
+
+Cette étude porte sur les logements situés en France métropolitaine ayant fait l'objet d'un diagnostic de performance énergétique (DPE) entre 2013 et juin 2021. Elle mobilise les données de l'Observatoire DPE de l'ADEME, qui centralise les diagnostics transmis depuis 2013.
+
+Le choix de cette période répond à deux considérations. D'une part, il permet de travailler sur des diagnostics établis avant la réforme du DPE de juillet 2021, qui a modifié les méthodes d'évaluation et les critères de classement énergétique. D'autre part, il vise à assurer une cohérence temporelle avec les données géographiques disponibles sur les écoquartiers, dont les périmètres correspondent à des projets labellisés avant 2021.
+
+L'unité d'observation est le diagnostic, et non le logement : un même logement peut avoir fait l'objet de plusieurs DPE. Par ailleurs, les diagnostics étant principalement réalisés à l'occasion de ventes ou de mises en location, les logements observés ne constituent pas un échantillon représentatif du parc résidentiel français. Contrairement au SDES, nous ne disposons pas des données détaillées sur le parc de logements nécessaires à un redressement statistique. Nous pouvons néanmoins rapprocher le nombre de DPE du nombre de logements recensés par l'Insee à l'échelle communale, afin de construire un indicateur de couverture géographique de notre base. Les résultats porteront donc sur les logements diagnostiqués et devront être interprétés au regard de ces limites de représentativité.
+
+```{python}
+import json
+from urllib.request import urlopen
+
+import duckdb
+import folium
+import pandas as pd
+
+# Nombre de diagnostic DPE par commune
+dpe = duckdb.sql("""
+    SELECT code_insee_commune_actualise AS cog, COUNT(numero_dpe) AS nb_dpe
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_date_22_11.parquet')
+    GROUP BY cog
+""").df()
+
+# Nombre de logements en 2021 par commune et calcul du nombre de DPE pour 100 logements
+logements = pd.read_csv(
+    "s3://mboutbal/diffusion/base-cc-logement-2021.CSV",
+    sep=";",
+    usecols=["CODGEO", "P21_LOG"],
+    dtype={"CODGEO": str},
+).rename(columns={"CODGEO": "cog"})
+
+donnees = logements.merge(dpe, on="cog", how="left")
+donnees = donnees.loc[donnees["P21_LOG"] > 0].copy()
+donnees["ratio"] = 100 * donnees["nb_dpe"].fillna(0) / donnees["P21_LOG"]
+ratios = donnees.set_index("cog")["ratio"].to_dict()
+
+# Charger les contours et ajouter le ratio à chaque commune
+url = "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson"
+with urlopen(url) as fichier:
+    contours = json.load(fichier)
+
+for commune in contours["features"]:
+    infos = commune["properties"]
+    infos["ratio"] = ratios.get(infos["code"], "Indisponible")
+
+# Passer de l’orange à 0 au vert sombre à 100 / bleu (+100) / gris (indispo)
+def couleur_ratio(ratio):
+    teinte = 30 + 0.9 * ratio
+    luminosite = 45 - 0.13 * ratio
+    return f"hsl({teinte}, 85%, {luminosite}%)"
+
+def style_commune(commune):
+    ratio = commune["properties"]["ratio"]
+
+    if ratio == "Indisponible":
+        couleur = "lightgray"
+    elif ratio > 100:
+        couleur = "#2166d1"
+    else:
+        couleur = couleur_ratio(ratio)
+
+    return {"fillColor": couleur, "fillOpacity": 1, "color": "#555", "weight": 0.4}
+
+# Tracer les communes et afficher le ratio au survol de la souris
+carte_couverture_dpe = folium.Map(
+    location=[46.6, 2.5], zoom_start=6, prefer_canvas=True
+)
+
+folium.GeoJson(
+    contours,
+    style_function=style_commune,
+    tooltip=folium.GeoJsonTooltip(
+        fields=["nom", "ratio"],
+        aliases=["Commune", "DPE pour 100 logements"],
+        localize=True,
+    ),
+).add_to(carte_couverture_dpe)
+
+# Ajouter la légende
+carte_couverture_dpe.get_root().html.add_child(folium.Element(f"""
+<div style="position:fixed; bottom:25px; left:25px; z-index:9999;
+            background:white; padding:10px; border:1px solid #aaa;">
+  <b>DPE pour 100 logements</b>
+  <div style="height:12px; background:linear-gradient(to right,
+       {couleur_ratio(0)}, {couleur_ratio(100 / 3)} 33.33%,
+       {couleur_ratio(50)} 50%, {couleur_ratio(100)});"></div>
+  <div style="display:flex; justify-content:space-between;">
+    <span>0</span><span>50</span><span>100</span>
+  </div>
+  <span style="color:#2166d1">■</span> Plus de 100<br>
+  <span style="color:lightgray">■</span> Indisponible
+</div>
+"""))
+
+carte_couverture_dpe
+```
+
+
 
 # Sources et extraction des données
 
@@ -47,6 +144,10 @@ Les données proviennent du jeu de données **DPE Logements avant juillet 2021**
 
 ## Les EcoQuartiers
  
+## Autres données
+
+Contours géographiques par ex.
+Nombre de logement en 2021 Insee RP
 
 # Bibliographie
 
