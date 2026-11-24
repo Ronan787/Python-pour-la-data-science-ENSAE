@@ -211,7 +211,7 @@ duckdb.sql("""
 
 ```
 
-Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les conditions définies dans regles_conservation. Les coordonnées sont nécessaires pour localiser les logements dans les écoquartiers. Nous conservons les diagnostics dont les classes énergie et GES vont de A à G et dont les consommations et émissions sont finies et non négatives. Nous excluons les DPE d’outre-mer et ceux du modèle « Centre commercial ». Les maximums observés étant très élevés, nous plafonnons la consommation et les émissions à leur 99ᵉ percentile pour limiter leur influence sur les moyennes (processus de windsorisation). Le tableau de diagnostic indique combien de DPE seraient retirés si chaque règle était appliquée seule. Un même DPE peut donc être compté sous plusieurs motifs.
+Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les conditions définies dans *regles_conservation* du script ci-dessous. Les coordonnées sont nécessaires pour localiser les logements dans les écoquartiers. Nous conservons les diagnostics dont les classes énergie et GES vont de A à G et dont les consommations et émissions sont finies et non négatives. Nous excluons les DPE d’outre-mer et ceux du modèle « Centre commercial ». Les maximums observés étant très élevés, nous plafonnons la consommation et les émissions à leur 99ᵉ percentile pour limiter leur influence sur les moyennes (windsorisation). 
 
 ```{python}
 #| eval: false
