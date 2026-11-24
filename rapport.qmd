@@ -31,7 +31,7 @@ link-citations: true
 
 La performance énergétique des logements constitue un enjeu majeur de la transition écologique et de la réduction de la vulnérabilité énergétique des ménages. Les logements les moins performants, communément appelés passoires thermiques et classés F ou G au diagnostic de performance énergétique (DPE), présentent des besoins énergétiques élevés, susceptibles d'alourdir les dépenses de chauffage de leurs occupants et de contribuer à des situations de précarité énergétique^[La précarité énergétique correspond à une difficulté effective à satisfaire ses besoins élémentaires en énergie tandis que la vulnérabilité énergétique désigne une exposition au risque de précarité.].
 
-Instauré en 2006, le diagnostic de performance énergétique (DPE) est un instrument central des politiques de rénovation énergétique. Obligatoire lors de la vente ou de la location d'un logement, il informe sur sa consommation énergétique et ses émissions de gaz à effet de serre. Les travaux successifs du Service des données et études statistiques (SDES) ont ainsi documenté les disparités selon les caractéristiques des logements et les territoires, à travers plusieurs estimations nationales entre 2018 et 2025 [@sdes2018; @sdes2025]. Ces disparités ont également été analysées à des échelles plus fines, notamment dans les quartiers prioritaires de la politique de la ville (QPV), où se cumulent fréquemment des vulnérabilités énergétiques et socio-économiques [@onpv2020].
+Instauré en 2006, le diagnostic de performance énergétique (DPE) est un instrument central des politiques de rénovation énergétique. Obligatoire lors de la vente ou de la location d'un logement, il informe sur sa consommation énergétique et ses émissions de gaz à effet de serre (GES). Les travaux successifs du Service des données et études statistiques (SDES) ont ainsi documenté les disparités selon les caractéristiques des logements et les territoires, à travers plusieurs estimations nationales entre 2018 et 2025 [@sdes2018; @sdes2025]. Ces disparités ont également été analysées à des échelles plus fines, notamment dans les quartiers prioritaires de la politique de la ville (QPV), où se cumulent fréquemment des vulnérabilités énergétiques et socio-économiques [@onpv2020].
 
 Si la littérature s'est largement attachée à caractériser les populations et les territoires les plus vulnérables [@insee2025], notre projet s'intéresse à une autre catégorie de quartiers : ceux reconnus pour leur démarche environnementale. Lancés en 2009 et dotés d'un label national depuis 2012 [@ministere2024], les ÉcoQuartiers constituent un instrument des politiques d'aménagement urbain durable. Les collectivités volontaires adhèrent à une charte de 20 engagements couvrant quatre dimensions : environnementale, sociale, économique et de gouvernance. Cette démarche leur permet de bénéficier d'un accompagnement technique et d'obtenir le label officiel "ÉcoQuartier". Toutefois, la labellisation repose sur une appréciation multidimensionnelle des projets, sans seuil national uniforme de performance énergétique. Dès lors, nous cherchons à déterminer si les écoquartiers présentent effectivement de meilleures performances énergétiques que les autres quartiers, que cet éventuel avantage résulte de la sélection des projets ou des aménagements réalisés, ou si leur exemplarité relève principalement d'un effet de labellisation.
 
@@ -45,61 +45,61 @@ Sans chercher à identifier un effet causal de la labellisation, cette analyse v
 
 # Champ de l'étude 
 
-Cette étude porte sur les logements situés en France métropolitaine ayant fait l'objet d'un diagnostic de performance énergétique (DPE) entre 2013 et juin 2021. Elle mobilise les données de l'Observatoire DPE de l'ADEME, qui centralise les diagnostics transmis depuis 2013.
+Cette étude porte sur les logements situés en France métropolitaine ayant fait l'objet d'un diagnostic de performance énergétique (DPE) entre 2013 et juin 2021. 
 
-Le choix de cette période répond à deux considérations. D'une part, il permet de travailler sur des diagnostics établis avant la réforme du DPE de juillet 2021, qui a modifié les méthodes d'évaluation et les critères de classement énergétique. D'autre part, il vise à assurer une cohérence temporelle avec les données géographiques disponibles sur les écoquartiers, dont les périmètres correspondent à des projets labellisés avant 2021.
+Le choix de la période 2013-2021 répond à deux considérations. D'une part, il permet de travailler sur des diagnostics établis avant la réforme du DPE de juillet 2021, qui a modifié les méthodes d'évaluation et les critères de classement énergétique, entraînant une rupture de série. D'autre part, il vise à assurer une cohérence temporelle avec les données géographiques disponibles sur les écoquartiers, dont les périmètres correspondent à des projets labellisés avant 2021.
 
-L'unité d'observation est le diagnostic, et non le logement : un même logement peut avoir fait l'objet de plusieurs DPE. Par ailleurs, les diagnostics étant principalement réalisés à l'occasion de ventes ou de mises en location, les logements observés ne constituent pas un échantillon représentatif du parc résidentiel français. Contrairement au SDES, nous ne disposons pas des données détaillées sur le parc de logements nécessaires à un redressement statistique. Nous pouvons néanmoins rapprocher le nombre de DPE du nombre de logements recensés par l'Insee à l'échelle communale, afin de construire un indicateur de couverture géographique de notre base. Les résultats porteront donc sur les logements diagnostiqués et devront être interprétés au regard de ces limites de représentativité.
+L'unité d'observation est le diagnostic, et non le logement : un même logement peut avoir fait l'objet de plusieurs DPE. Par ailleurs, les diagnostics étant principalement réalisés à l'occasion de ventes ou de mises en location, les logements observés ne constituent pas un échantillon représentatif du parc résidentiel français et ont tendance notamment à surreprésenter les logements neufs. Contrairement au SDES, nous ne disposons pas des données détaillées sur le parc de logements nécessaires à un redressement statistique. 
+
+Pour évaluer la couverture géographique de la base brute (non nettoyée), nous rapportons le nombre de DPE au nombre de logements recensés par l’Insee en 2021 dans chaque commune. La carte représente ainsi le nombre de DPE pour 100 logements.
 
 ```{python}
-import json
-from urllib.request import urlopen
-
 import duckdb
 import folium
+import geopandas as gpd
 import pandas as pd
 
-# Nombre de diagnostic DPE par commune
-dpe = duckdb.sql("""
+# Compter les DPE par commune dans la base non nettoyée
+dpe_par_commune = duckdb.sql("""
     SELECT code_insee_commune_actualise AS cog, COUNT(numero_dpe) AS nb_dpe
     FROM read_parquet('s3://mboutbal/diffusion/dpe_date_22_11.parquet')
     GROUP BY cog
 """).df()
 
-# Nombre de logements en 2021 par commune et calcul du nombre de DPE pour 100 logements
+# Reformatage de la base logement issue du RP 2021
 logements = pd.read_csv(
     "s3://mboutbal/diffusion/base-cc-logement-2021.CSV",
     sep=";",
     usecols=["CODGEO", "P21_LOG"],
     dtype={"CODGEO": str},
-).rename(columns={"CODGEO": "cog"})
+).rename(columns={"CODGEO": "cog", "P21_LOG": "nb_logements"})
 
-donnees = logements.merge(dpe, on="cog", how="left")
-donnees = donnees.loc[donnees["P21_LOG"] > 0].copy()
-donnees["ratio"] = 100 * donnees["nb_dpe"].fillna(0) / donnees["P21_LOG"]
-ratios = donnees.set_index("cog")["ratio"].to_dict()
+# Calculer les DPE pour 100 logements dans les communes avec un effectif positif.
+dpe_logements_par_commune = logements.merge(dpe_par_commune, on="cog", how="left")
+nb_logements = dpe_logements_par_commune["nb_logements"]
 
-# Charger les contours et ajouter le ratio à chaque commune
-url = "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson"
-with urlopen(url) as fichier:
-    contours = json.load(fichier)
+dpe_logements_par_commune["ratio"] = (
+    100 * dpe_logements_par_commune["nb_dpe"].fillna(0)
+    / nb_logements.where(nb_logements > 0)
+)
 
-for commune in contours["features"]:
-    infos = commune["properties"]
-    infos["ratio"] = ratios.get(infos["code"], "Indisponible")
+# Joindre les ratios aux contours en gardant toutes les communes
+url_contours = "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson"
+communes = gpd.read_file(url_contours).rename(columns={"code": "cog"})
+communes = communes.merge(
+    dpe_logements_par_commune[["cog", "ratio"]], on="cog", how="left"
+)[["nom", "ratio", "geometry"]]
 
 
-# Passer de l’orange à 0 au vert sombre à 100 / bleu (+100) / gris (indispo)
 def couleur_ratio(ratio):
-    teinte = 30 + 0.9 * ratio
-    luminosite = 45 - 0.13 * ratio
-    return f"hsl({teinte}, 85%, {luminosite}%)"
+    """Passer de l’orange à 0 au vert sombre à 100."""
+    return f"hsl({30 + 0.9 * ratio}, 85%, {45 - 0.13 * ratio}%)"
 
 
 def style_commune(commune):
+    """Choisir le remplissage et tracer une limite fine."""
     ratio = commune["properties"]["ratio"]
-
-    if ratio == "Indisponible":
+    if pd.isna(ratio):
         couleur = "lightgray"
     elif ratio > 100:
         couleur = "#2166d1"
@@ -109,13 +109,13 @@ def style_commune(commune):
     return {"fillColor": couleur, "fillOpacity": 1, "color": "#555", "weight": 0.4}
 
 
-# Tracer les communes et afficher le ratio au survol de la souris
+# Utiliser Canvas pour afficher les contours et le ratio au survol
 carte_couverture_dpe = folium.Map(
     location=[46.6, 2.5], zoom_start=6, prefer_canvas=True
 )
 
 folium.GeoJson(
-    contours,
+    communes,
     style_function=style_commune,
     tooltip=folium.GeoJsonTooltip(
         fields=["nom", "ratio"],
@@ -124,8 +124,8 @@ folium.GeoJson(
     ),
 ).add_to(carte_couverture_dpe)
 
-# Ajouter la légende
-carte_couverture_dpe.get_root().html.add_child(folium.Element(f"""
+# Reprendre les couleurs de la carte dans la légende
+legende = f"""
 <div style="position:fixed; bottom:25px; left:25px; z-index:9999;
             background:white; padding:10px; border:1px solid #aaa;">
   <b>DPE pour 100 logements</b>
@@ -137,21 +137,26 @@ carte_couverture_dpe.get_root().html.add_child(folium.Element(f"""
   </div>
   <span style="color:#2166d1">■</span> Plus de 100<br>
   <span style="color:lightgray">■</span> Indisponible
+  <div style="margin-top:6px; font-size:11px;">
+    <i>Sources : Insee, RP 2021<br>ADEME, DPE 2013-2021</i>
+  </div>
 </div>
-"""))
+"""
+carte_couverture_dpe.get_root().html.add_child(folium.Element(legende))
 
 carte_couverture_dpe
 ```
 
+La carte montre de fortes différences de couverture entre les communes. Dans un nombre non négligeable d’entre elles, le nombre de DPE dépasse celui des logements recensés. Un même logement peut avoir fait l’objet de plusieurs diagnostics, ce qui pourrait expliquer une partie de l’écart. Il paraît toutefois peu probable que ce facteur suffise à l’expliquer, compte tenu de la durée de validité théorique de dix ans d’un DPE. Des différences de périmètre entre les deux sources peuvent également y contribuer. Ces résultats doivent donc être interprétés avec prudence. En conclusion, notre étude porte sur les logements diagnostiqués, dont la représentativité à l’échelle de l’ensemble du parc reste incertaine.
 
 
 # Sources et extraction des données
 
 ## Les Diagnostiques de Performance Energétiques (DPE)
 
-Les données proviennent du jeu de données DPE Logements (avant juillet 2021) de l’ADEME. Il rassemble les diagnostics de logements réalisés avant l’entrée en vigueur de la réforme du DPE le 1er juillet 2021 ([Source et documentation de l’API](https://data.ademe.fr/datasets/dpe-france/api-doc)).
+Les données proviennent du jeu de données DPE Logements (avant juillet 2021) de l’ADEME (Agence de la transition écologique). Il rassemble les diagnostics de logements réalisés avant l’entrée en vigueur de la réforme du DPE le 1er juillet 2021 ([Source et documentation de l’API](https://data.ademe.fr/datasets/dpe-france/api-doc)).
 
-Nous avons sélectionné les variables potentiellement utiles à notre analyse à partir du dictionnaire de l’ADEME et défini leur type après une première exploration des données. La base comprend un total 10 728 950 diagnostics. Le script **scripts/data_extraction_ademe.py** les récupère dans l’ordre de leur numéro de DPE et traite un lot de 10 000 lignes à la fois pour limiter l’usage de la mémoire. Les données sont écrites au format Parquet, qui permet de les compresser et de lire uniquement les colonnes nécessaires à l’analyse. Avec DuckDB, nous vérifions que le nombre de lignes correspond au total annoncé par l’API et que les numéros de DPE sont renseignés et uniques. Nous stockons ensuite le fichier validé sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet) pour le réutiliser sans relancer l’extraction, qui prend deux à trois heures.
+Nous avons sélectionné les variables potentiellement utiles à notre analyse à partir du dictionnaire de l’ADEME et défini leur type après une première exploration des données. Le script **scripts/data_extraction_ademe.py** les récupère dans l’ordre de leur numéro de DPE et traite un lot de 10 000 lignes à la fois pour limiter l’usage de la mémoire. Les données sont écrites au format Parquet, qui permet de les compresser et de lire uniquement les colonnes nécessaires à l’analyse. Avec DuckDB, nous vérifions que le nombre de lignes correspond au total annoncé par l’API et que les numéros de DPE sont renseignés et uniques. Nous stockons ensuite le fichier validé sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet) pour le réutiliser sans relancer l’extraction, qui prend deux à trois heures. 
 
 ```{python}
 import duckdb
@@ -164,7 +169,8 @@ nb_dpe = duckdb.sql(f"""
     FROM read_parquet('{path_dpe}')
 """).fetchall()[0][0]
 
-print("Nombre total de diagnostics :", nb_dpe)
+print("Nombre total de DPE :", nb_dpe)
+print("Nombre total de DPE :", nb_dpe)
 ```
 
 
@@ -172,15 +178,16 @@ print("Nombre total de diagnostics :", nb_dpe)
  
 ## Autres données
 
-Contours géographiques par ex.
-Nombre de logement en 2021 Insee RP
+Source des contours communaux — [Contours administratifs, millésime 2021](https://www.data.gouv.fr/datasets/contours-administratifs), [GeoJSON des communes à 1 000 m](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson).
+
+Source du nombre de logements par commune — Insee, recensement de la population 2021, données diffusées selon la géographie au 1er janvier 2024. [Logement en 2021 — Base des principaux indicateurs](https://www.insee.fr/fr/statistiques/8202349?sommaire=8202874).
 
 
 # Nettoyage
 
-## DPE
+## Données DPE
 
-Dans un but exploratoire et pour pouvoir effectué le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ici la distribution des variables de consommations d'énergie et d'émissions de GES
+Dans un but exploratoire et pour pouvoir effectuer le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ci-dessous la distribution des variables de consommation d'énergie et d'émission de GES.
 
 ```{python}
 import duckdb
@@ -204,21 +211,21 @@ duckdb.sql("""
 
 ```
 
-Pour l’analyse, nous retenons les DPE de 2013 à 2021 qui disposent de coordonnées géographiques (afin de pouvoir les localiser ensuite dans les écoquartiers), dont les classes énergie et GES vont de A à G et dont les consommations d’énergie et les émissions de GES sont finies et non négatives. On windsorie au 99 percentile la distribution. Nous excluons les DPE identifiés comme ultramarins ainsi que ceux associés au modèle « Centre commercial ».
-Le tableau de diagnostic donne le nombre de DPE concernés par chaque motif d’exclusion avant nettoyage. Un même DPE peut être compté sous plusieurs motifs.
+Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les conditions définies dans *regles_conservation* du script ci-dessous. Les coordonnées sont nécessaires pour localiser les logements dans les écoquartiers. Nous conservons les diagnostics dont les classes énergie et GES vont de A à G et dont les consommations et émissions sont finies et non négatives. Nous excluons les DPE d’outre-mer et ceux du modèle « Centre commercial ». Les maximums observés étant très élevés, nous plafonnons la consommation et les émissions à leur 99ᵉ percentile pour limiter leur influence sur les moyennes (windsorisation). 
 
 ```{python}
 #| eval: false
 #| echo: true
-# Ce code est un exemple pour appeler les fonctions directement 
-# Cependant, pour des raisons de rapidité, il n'est pas exécuté et
-# seule les deux cellules suivantes le sont
+# Ce code est un exemple de code qui permettrait d'appeler les fonctions directement
+# à partir de nos scripts. Cependant, pour des raisons de rapidité, il est seulement
+# donnée à titre d'exemple seule les deux cellules suivantes sont exécutées en appelant
+# les fichiers sauvegardés
 from scripts.data_cleaning_ademe import bilan_nettoyage, clean_dpe
 
 chemin_parquet_brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
 fichier_nettoye = "dpe_clean.parquet"
 
-# Chaque condition indique quels DPE conserver.
+# Chaque condition indique quels DPE conserver
 regles_conservation = {
     "Coordonnées manquantes": """
         latitude IS NOT NULL AND longitude IS NOT NULL
@@ -242,18 +249,21 @@ regles_conservation = {
         "isfinite(emissions_ges) AND emissions_ges >= 0",
 }
 
-# Enregistrer les DPE nettoyés avec leurs indicateurs de winsorisation.
+# Enregistrement des DPE nettoyés avec leurs indicateurs de winsorisation
 dpe_nettoye = clean_dpe(chemin_parquet_brut, regles_conservation)
 dpe_nettoye.write_parquet(fichier_nettoye)
 
-# Compter les exclusions et les valeurs winsorisées.
+# Tableaux qui recense le nombre de DPE concernés par le nettoyage ainsi
+# que le nombre de DPE dont la consommation a été winsorisée.
 tableau_diagnostic = bilan_nettoyage(
     chemin_parquet_brut, regles_conservation, fichier_nettoye
 )
 tableau_diagnostic
 ```
 
-Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` lance le nettoyage, calcule le diagnostic et enregistre les deux fichiers sur S3. Pour accélérer le rendu, Quarto lit directement ces fichiers. Pour chaque règle de nettoyage, le tableau indique combien de DPE sont concernés pour chaque motif d’exclusion sur la base brute. Un même DPE peut être compté sous plusieurs motifs. Les deux dernières lignes indiquent, parmi les DPE conservés, combien ont vu leur consommation d’énergie ou leurs émissions de GES plafonnées
+Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` lance le nettoyage, calcule le diagnostic et enregistre les deux fichiers sur S3 dans le bucket renseigné. Pour accélérer le rendu, Quarto lit directement ces fichiers à partir de leur sauvegarde S3. 
+
+Pour chaque filtre de nettoyage, le tableau indique combien de DPE seraient retirés si ce filtre était appliqué seul. Un même DPE peut donc être compté dans plusieurs lignes. Les deux dernières lignes portent uniquement sur les DPE conservés et indiquent, séparément, combien ont vu leur consommation d’énergie ou leurs émissions de GES ramenées au 99ᵉ percentile.
 
 ```{python}
 import duckdb
