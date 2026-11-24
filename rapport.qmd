@@ -152,6 +152,7 @@ import duckdb
 
 path_dpe = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
 
+# Nombre total d'observations
 nb_dpe = duckdb.sql(f"""
     SELECT COUNT(DISTINCT numero_dpe)
     FROM read_parquet('{path_dpe}')
@@ -159,6 +160,7 @@ nb_dpe = duckdb.sql(f"""
 
 print("Nombre total de diagnostics :", nb_dpe)
 
+# Montre les 5 premières lignes du dataset
 duckdb.sql(f"SELECT * FROM read_parquet('{path_dpe}') LIMIT 5").df()
 ```
 
@@ -169,6 +171,11 @@ duckdb.sql(f"SELECT * FROM read_parquet('{path_dpe}') LIMIT 5").df()
 
 Contours géographiques par ex.
 Nombre de logement en 2021 Insee RP
+
+
+# Nettoyage
+## DPE
+
 
 # Bibliographie
 
