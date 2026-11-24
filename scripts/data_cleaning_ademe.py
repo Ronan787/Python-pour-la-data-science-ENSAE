@@ -4,6 +4,7 @@ OBJECTIF
     2. Nettoyer et formater les données DPE
 """
 import duckdb
+import pandas as pd
 import s3fs
 
 REQUETE_DPE_RENOMMES = """
@@ -56,29 +57,58 @@ def decrire_dpe_pre_nettoyage(dpe_brut):
         print(effectifs_par_modalite.to_string(index=False))
 
 
+# %%
+# Paramètres des percentiles après stats desc sur la base brute non nettoyée
+P99_ENERGIE = 551.07
+P99_GES = 102.38
+
+
 def clean_dpe(chemin_parquet, regles_conservation):
-    """Lire, renommer et conserver les DPE qui respectent toutes les règles"""
+    """Lire, renommer, filtrer et winsoriser les DPE"""
     dpe_brut = duckdb.sql(REQUETE_DPE_RENOMMES, params=[chemin_parquet])
     filtre_conservation = " AND ".join(
         f"({condition})" for condition in regles_conservation.values()
     )
-    return dpe_brut.filter(filtre_conservation)
+    dpe_filtre = dpe_brut.filter(filtre_conservation)
+
+    # Création 2 variables pour indiquer si sont concernées par windsorisation
+    dpe_avec_indicateurs = dpe_filtre.project(f"""
+        *,
+        CASE WHEN conso_energie > {P99_ENERGIE} THEN 1 ELSE 0 END AS windso_energie,
+        CASE WHEN emissions_ges > {P99_GES} THEN 1 ELSE 0 END AS windso_ges
+    """)
+
+    # Plafonner les deux colonnes aux P99 estimés sur la base brute
+    return dpe_avec_indicateurs.project(f"""
+        * REPLACE (
+            LEAST(conso_energie, {P99_ENERGIE}) AS conso_energie,
+            LEAST(emissions_ges, {P99_GES}) AS emissions_ges
+        )
+    """)
 
 
-def bilan_nettoyage(chemin_parquet, regles_conservation):
-    """Compter les exclusions par motif sur les données avant filtrage"""
+def bilan_nettoyage(chemin_parquet, regles_conservation, fichier_nettoye):
+    """Compter les exclusions et les DPE winsorisés."""
     dpe_brut = duckdb.sql(REQUETE_DPE_RENOMMES, params=[chemin_parquet])
 
-    # DPE dont la condition est fausse ou renvoie NULL
+    # Compter chaque motif d’exclusion sur la base brute.
     comptages_sql = [
-        f'COUNT(*) FILTER (WHERE ({condition}) IS NOT TRUE) AS "{motif_exclusion}"'
-        for motif_exclusion, condition in regles_conservation.items()
+        f'COUNT(*) FILTER (WHERE ({condition}) IS NOT TRUE) AS "{motif}"'
+        for motif, condition in regles_conservation.items()
     ]
-    exclusions_par_motif = dpe_brut.aggregate(", ".join(comptages_sql)).df().iloc[0]
-    return exclusions_par_motif.rename_axis("Motif").reset_index(name="DPE concernés")
+    exclusions = dpe_brut.aggregate(", ".join(comptages_sql)).df().iloc[0]
+
+    # Additionner les indicateurs 0/1 dans le Parquet déjà nettoyé
+    winsorisations = duckdb.read_parquet(fichier_nettoye).aggregate("""
+        COALESCE(SUM(windso_energie), 0) AS "Consommation énergie plafonnée au P99",
+        COALESCE(SUM(windso_ges), 0) AS "Émissions GES plafonnées au P99"
+    """).df().iloc[0]
+
+    effectifs = pd.concat([exclusions, winsorisations]).astype("int64")
+    return effectifs.rename_axis("Motif").reset_index(name="DPE concernés")
 
 
-# La clé décrit le motif d’exclusion. La condition indique quels DPE garder.
+# La clé décrit le motif d’exclusion. La condition indique quels DPE garder
 regles_conservation = {
     "Coordonnées manquantes": """
         latitude IS NOT NULL AND longitude IS NOT NULL
@@ -96,20 +126,15 @@ regles_conservation = {
     "Émissions GES invalides ou manquantes": "isfinite(emissions_ges) AND emissions_ges >= 0",
 }
 
+
 if __name__ == "__main__":
-    chemin_parquet = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
+    brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
+    parquet = "dpe_clean.parquet"
+    csv = "tableau_diagnostic_nettoyage.csv"
     s3 = s3fs.S3FileSystem(endpoint_url="https://minio.lab.sspcloud.fr")
 
-    # Optionnel
-    # dpe_brut = duckdb.sql(REQUETE_DPE_RENOMMES, params=[chemin_parquet])
-    # decrire_dpe_pre_nettoyage(dpe_brut)  # optionnel, but exploratoire
+    clean_dpe(brut, regles_conservation).write_parquet(parquet)
+    bilan_nettoyage(brut, regles_conservation, parquet).to_csv(csv, index=False)
 
-    # Calculer le bilan une seule fois et l’enregistrer sur S3.
-    tableau_diagnostic_nettoyage = bilan_nettoyage(chemin_parquet, regles_conservation)
-    with s3.open("mboutbal/diffusion/tableau_diagnostic_nettoyage.csv", "w") as fichier:
-        tableau_diagnostic_nettoyage.to_csv(fichier, index=False)
-
-    # Écrire la base nettoyée en Parquet, puis l’envoyer sur S3.
-    dpe_nettoye = clean_dpe(chemin_parquet, regles_conservation)
-    dpe_nettoye.write_parquet("dpe_clean.parquet")
-    s3.put("dpe_clean.parquet", "mboutbal/diffusion/dpe_clean.parquet")
+    for fichier in (parquet, csv):
+        s3.put(fichier, f"mboutbal/diffusion/{fichier}")
