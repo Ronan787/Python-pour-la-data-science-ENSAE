@@ -1,37 +1,43 @@
 
-from data_cleaning_ademe import df
+
 # Carte 
 import folium
 import geopandas as gpd
 import s3fs
 import shutil
+import numpy as np
+import matplotlib.pyplot as plt
+import duckdb
+import pandas as pd
 #from data_extraction_ademe.py import upload_to_s3
 
+
+dpe = duckdb.sql("""
+    SELECT *
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_clean.parquet')
+""").df()
+'''
+## Carte
 # Fichier avec les contours des départements 
 BUCKET_R = "ron"
 path = f"s3://{BUCKET_R}/diffusion/georef-france-departement/georef-france-departement-millesime.shp"
-#path = '/home/onyxia/Python-pour-la-data-science-ENSAE/georef-france-departement/georef-france-departement-millesime.shp'
-
-#Le code pour faire une carte
-#est le même pour les classes estimation_ges et les classes consommation_energie
-#on utilise une même fonction pour alléger le code 
 
 # On calcule le taux de chaque classe par département 
 dpe_dep = (
-    df
-    .groupby('tv016_departement_code')
-    ['classe_estimation_ges']
+    dpe
+    .groupby('code_departement')
+    ['classe_ges']
     .value_counts(normalize = True)
     .rename('proportion')
     .reset_index()
 )
 
 # pour merge ensuite, on renomme la colonne avec le numéro des départements 
-dpe_dep = dpe_dep.rename(columns = {'tv016_departement_code' : 'Code_Offici_dep'})
+dpe_dep = dpe_dep.rename(columns = {'code_departement' : 'Code_Offici_dep'})
 
 taux_passoires = (
     dpe_dep
-    [dpe_dep['classe_estimation_ges'].isin(['F', 'G'])]
+    [dpe_dep['classe_ges'].isin(['F', 'G'])]
     .groupby('Code_Offici_dep')
     .sum()
     .reset_index()
@@ -40,7 +46,7 @@ taux_passoires = (
 # Quand la souris survole un département, une étiquette s'affiche 
 # avec le taux de chaque classe dans le département 
 # Ici, on crée la légende 
-dpe_dep['Legende'] = ['{} : {} '.format(row.classe_estimation_ges, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
+dpe_dep['Legende'] = ['{} : {} '.format(row.classe_ges, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
 dpe_dep = (
     dpe_dep
     .sort_values(by = ['Code_Offici_dep', 'Legende'], ascending=[True, True])
@@ -110,3 +116,61 @@ def upload_to_s3(s3_bucket, file):
     print(f"Fichier exporté vers s3://{file_path_out_s3}")
 
 upload_to_s3(BUCKET_R, 'carte.html')
+'''
+
+
+# bar plots
+# classes_ges
+# Tracé de l'histogramme
+(
+    dpe['classe_ges']
+    .value_counts(normalize = True)
+    .rename('proportion')
+    .reset_index()
+    .sort_values(by = 'classe_ges')
+    .plot.bar(x = 'classe_ges', y = 'proportion')
+)
+#légendes
+plt.title('Proportion de chaque classe GES')
+plt.xlabel('Classes GES')
+plt.ylabel('Proportion')
+plt.savefig("bar_plot_classes_ges.png")
+
+plt.clf()
+# classes_energie
+# Tracé de l'histogramme
+(
+    dpe['classe_energie']
+    .value_counts(normalize = True)
+    .rename('proportion')
+    .reset_index()
+    .sort_values(by = 'classe_energie')
+    .plot.bar(x = 'classe_energie', y = 'proportion')
+)
+#légendes
+plt.title('Proportion de chaque classe d\'énergie')
+plt.xlabel('Classes énergie')
+plt.ylabel('Proportion')
+plt.savefig("bar_plot_classes_énergie.png")
+
+plt.clf()
+#nombre de DPE en fonction de l'année 
+tableau = pd.crosstab(dpe['date_dpe'].dt.year, dpe['classe_ges'])
+print(tableau)
+plt.imshow(tableau, cmap="YlOrRd", aspect="auto")
+
+# Ajoute des catégories sur les axes
+plt.xticks(
+    range(len(tableau.columns)),
+    tableau.columns
+)
+
+plt.yticks(
+    range(len(tableau.index)),
+    tableau.index
+)
+
+# Ajouter une barre de couleur
+plt.colorbar(label="Nombre de DPE")
+plt.savefig("nb_dpe_par_annee.png")
+
