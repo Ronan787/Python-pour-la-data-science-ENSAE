@@ -46,40 +46,92 @@ Le choix de cette période répond à deux considérations. D'une part, il perme
 L'unité d'observation est le diagnostic, et non le logement : un même logement peut avoir fait l'objet de plusieurs DPE. Par ailleurs, les diagnostics étant principalement réalisés à l'occasion de ventes ou de mises en location, les logements observés ne constituent pas un échantillon représentatif du parc résidentiel français. Contrairement au SDES, nous ne disposons pas des données détaillées sur le parc de logements nécessaires à un redressement statistique. Nous pouvons néanmoins rapprocher le nombre de DPE du nombre de logements recensés par l'Insee à l'échelle communale, afin de construire un indicateur de couverture géographique de notre base. Les résultats porteront donc sur les logements diagnostiqués et devront être interprétés au regard de ces limites de représentativité.
 
 ```{python}
+import json
+from urllib.request import urlopen
+
 import duckdb
+import folium
+import pandas as pd
 
-MY_BUCKET = "mboutbal"
-FILE_PATH_S3 = f"s3://{MY_BUCKET}/diffusion/dpe.parquet"
-
-con = duckdb.connect()
-
-# 1. Nombre de DPE par commune
-dpe = con.sql(f"""
-    SELECT code_insee_commune_actualise AS Code,
-           COUNT(numero_dpe) AS nb_dpe
-    FROM read_parquet('{FILE_PATH_S3}')
-    GROUP BY 1
+# Nombre de diagnostic DPE par commune
+dpe = duckdb.sql("""
+    SELECT code_insee_commune_actualise AS cog, COUNT(numero_dpe) AS nb_dpe
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_date_22_11.parquet')
+    GROUP BY cog
 """).df()
 
-# 2. Nombre de logements par commune
-logements = con.sql(f"""
-    SELECT Code,
-           TRY_CAST(REPLACE("Logements 2023", ' ', '') AS DOUBLE) AS nb_logements
-    FROM read_csv(
-        's3://{MY_BUCKET}/diffusion/nb_logement_commune_RP.csv',
-        delim=';', skip=2, header=true, all_varchar=true
-    )
-""").df()
+# Nombre de logements en 2021 par commune et calcul du nombre de DPE pour 100 logements
+logements = pd.read_csv(
+    "s3://mboutbal/diffusion/base-cc-logement-2021.CSV",
+    sep=";",
+    usecols=["CODGEO", "P21_LOG"],
+    dtype={"CODGEO": str},
+).rename(columns={"CODGEO": "cog"})
 
-# 3. Calcul du ratio
-dpe["Code"] = dpe["Code"].astype(str).str.zfill(5)
-logements["Code"] = logements["Code"].astype(str).str.zfill(5)
+donnees = logements.merge(dpe, on="cog", how="left")
+donnees = donnees.loc[donnees["P21_LOG"] > 0].copy()
+donnees["ratio"] = 100 * donnees["nb_dpe"].fillna(0) / donnees["P21_LOG"]
+ratios = donnees.set_index("cog")["ratio"].to_dict()
 
-df = logements.merge(dpe, on="Code", how="left")
-df["nb_dpe"] = df["nb_dpe"].fillna(0)
-df["ratio"] = 100 * df["nb_dpe"] / df["nb_logements"]
+# Charger les contours et ajouter le ratio à chaque commune
+url = "https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson"
+with urlopen(url) as fichier:
+    contours = json.load(fichier)
 
-display(df.head(10))
+for commune in contours["features"]:
+    infos = commune["properties"]
+    infos["ratio"] = ratios.get(infos["code"], "Indisponible")
+
+# Passer de l’orange à 0 au vert sombre à 100 / bleu (+100) / gris (indispo)
+def couleur_ratio(ratio):
+    teinte = 30 + 0.9 * ratio
+    luminosite = 45 - 0.13 * ratio
+    return f"hsl({teinte}, 85%, {luminosite}%)"
+
+def style_commune(commune):
+    ratio = commune["properties"]["ratio"]
+
+    if ratio == "Indisponible":
+        couleur = "lightgray"
+    elif ratio > 100:
+        couleur = "#2166d1"
+    else:
+        couleur = couleur_ratio(ratio)
+
+    return {"fillColor": couleur, "fillOpacity": 1, "color": "#555", "weight": 0.4}
+
+# Tracer les communes et afficher le ratio au survol de la souris
+carte_couverture_dpe = folium.Map(
+    location=[46.6, 2.5], zoom_start=6, prefer_canvas=True
+)
+
+folium.GeoJson(
+    contours,
+    style_function=style_commune,
+    tooltip=folium.GeoJsonTooltip(
+        fields=["nom", "ratio"],
+        aliases=["Commune", "DPE pour 100 logements"],
+        localize=True,
+    ),
+).add_to(carte_couverture_dpe)
+
+# Ajouter la légende
+carte_couverture_dpe.get_root().html.add_child(folium.Element(f"""
+<div style="position:fixed; bottom:25px; left:25px; z-index:9999;
+            background:white; padding:10px; border:1px solid #aaa;">
+  <b>DPE pour 100 logements</b>
+  <div style="height:12px; background:linear-gradient(to right,
+       {couleur_ratio(0)}, {couleur_ratio(100 / 3)} 33.33%,
+       {couleur_ratio(50)} 50%, {couleur_ratio(100)});"></div>
+  <div style="display:flex; justify-content:space-between;">
+    <span>0</span><span>50</span><span>100</span>
+  </div>
+  <span style="color:#2166d1">■</span> Plus de 100<br>
+  <span style="color:lightgray">■</span> Indisponible
+</div>
+"""))
+
+carte_couverture_dpe
 ```
 
 
@@ -92,6 +144,10 @@ Les données proviennent du jeu de données **DPE Logements avant juillet 2021**
 
 ## Les EcoQuartiers
  
+## Autres données
+
+Contours géographiques par ex.
+Nombre de logement en 2021 Insee RP
 
 # Bibliographie
 
