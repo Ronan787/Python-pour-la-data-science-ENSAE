@@ -19,6 +19,12 @@ bibliography: references.bib
 link-citations: true
 ---
 
+
+```{python}
+#| include: false
+%pip install -r requirements.txt
+```
+
 # Introduction
 
 ## Contexte et problématique
@@ -176,6 +182,49 @@ Nombre de logement en 2021 Insee RP
 # Nettoyage
 ## DPE
 
+```{python}
+import duckdb
+from scripts.data_cleaning_ademe import clean_dpe
+
+chemin_parquet = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
+
+# La clé décrit le motif d’exclusion. La condition indique quels DPE garder.
+regles_conservation = {
+    "Coordonnées manquantes": """
+        latitude IS NOT NULL AND longitude IS NOT NULL
+        AND NOT isnan(latitude) AND NOT isnan(longitude)
+    """,
+    "Outre-mer": """
+        LEFT(COALESCE(cog, ''), 2) NOT IN ('97', '98')
+        AND LEFT(COALESCE(code_departement, ''), 2) NOT IN ('97', '98')
+    """,
+    "Date hors 2013–2021 ou manquante":
+        "YEAR(date_dpe) BETWEEN 2013 AND 2021",
+    "Classe énergie invalide ou manquante":
+        "classe_energie IN ('A', 'B', 'C', 'D', 'E', 'F', 'G')",
+    "Classe GES invalide ou manquante":
+        "classe_ges IN ('A', 'B', 'C', 'D', 'E', 'F', 'G')",
+    "Centre commercial":
+        "modele_dpe IS DISTINCT FROM 'Centre commercial'",
+    "Consommation invalide ou manquante":
+        "isfinite(conso_energie) AND conso_energie >= 0",
+    "Émissions GES invalides ou manquantes":
+        "isfinite(emissions_ges) AND emissions_ges >= 0",
+}
+
+# Préparer les données nettoyées pour la suite du rapport
+dpe_nettoye = clean_dpe(chemin_parquet, regles_conservation)
+print("Nombre de DPE après nettoyage :", dpe_nettoye.aggregate("COUNT(*)").fetchall()[0][0])
+```
+
+
+```{python}
+import pandas as pd
+
+# Afficher le nombre de DPE qui ne respectent pas chaque règle
+chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.csv"
+pd.read_csv(chemin_bilan_nettoyage)
+```
 
 # Bibliographie
 
