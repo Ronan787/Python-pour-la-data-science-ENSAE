@@ -37,3 +37,16 @@ htmlcov/
 tempCodeRunnerFile.py
 .DS_Store
 Thumbs.db
+
+# Données et fichiers générés
+*.parquet
+*.csv
+*.tmp
+*.xlsx
+*.gpkg
+*.checkpoint.json
+
+# Données téléchargées par les scripts (archives et dossiers d'extraction)
+*.zip
+ecoquartiers/
+insee_filosofi/

@@ -5,3 +5,4 @@ tqdm==4.70.1
 duckdb==1.5.6
 folium==1.0.0
 geopandas==1.2.0
+s3fs==2026.9.0
