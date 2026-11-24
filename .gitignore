@@ -50,3 +50,7 @@ Thumbs.db
 *.zip
 ecoquartiers/
 insee_filosofi/
+resultats/
+
+# Résultats intermédiaires (croisement DPE x écoquartiers), recalculables
+resultats/
