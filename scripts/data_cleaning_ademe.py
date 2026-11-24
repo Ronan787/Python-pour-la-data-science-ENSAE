@@ -2,6 +2,10 @@
 OBJECTIF
     1. Appeler les données extraites par le script scripts/data_extraction_ademe.py depuis S3
     2. Nettoyer et formater les données DPE
+
+CONFIGURATION
+    - Paramétrer ligne 137 avec son propre paramètre de bucket pour que
+    les données puissent être sauvegardées 
 """
 import duckdb
 import pandas as pd
@@ -71,14 +75,14 @@ def clean_dpe(chemin_parquet, regles_conservation):
     )
     dpe_filtre = dpe_brut.filter(filtre_conservation)
 
-    # Création 2 variables pour indiquer si sont concernées par windsorisation
+    # Création de 2 variables pour indiquer quels DPE ont été windsorisé
     dpe_avec_indicateurs = dpe_filtre.project(f"""
         *,
         CASE WHEN conso_energie > {P99_ENERGIE} THEN 1 ELSE 0 END AS windso_energie,
         CASE WHEN emissions_ges > {P99_GES} THEN 1 ELSE 0 END AS windso_ges
     """)
 
-    # Plafonner les deux colonnes aux P99 estimés sur la base brute
+    # Windsoriser les deux colonnes aux P99 estimés sur la base brute
     return dpe_avec_indicateurs.project(f"""
         * REPLACE (
             LEAST(conso_energie, {P99_ENERGIE}) AS conso_energie,
@@ -91,7 +95,7 @@ def bilan_nettoyage(chemin_parquet, regles_conservation, fichier_nettoye):
     """Compter les exclusions et les DPE winsorisés."""
     dpe_brut = duckdb.sql(REQUETE_DPE_RENOMMES, params=[chemin_parquet])
 
-    # Compter chaque motif d’exclusion sur la base brute.
+    # Compter chaque motif d’exclusion sur la base brute
     comptages_sql = [
         f'COUNT(*) FILTER (WHERE ({condition}) IS NOT TRUE) AS "{motif}"'
         for motif, condition in regles_conservation.items()
@@ -130,6 +134,7 @@ regles_conservation = {
 if __name__ == "__main__":
     brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
     parquet = "dpe_clean.parquet"
+    bucket_sortie = "mboutbal"  # A paramétrer
     csv = "tableau_diagnostic_nettoyage.csv"
     s3 = s3fs.S3FileSystem(endpoint_url="https://minio.lab.sspcloud.fr")
 
@@ -137,4 +142,4 @@ if __name__ == "__main__":
     bilan_nettoyage(brut, regles_conservation, parquet).to_csv(csv, index=False)
 
     for fichier in (parquet, csv):
-        s3.put(fichier, f"mboutbal/diffusion/{fichier}")
+        s3.put(fichier, f"{bucket_sortie}/diffusion/{fichier}")
