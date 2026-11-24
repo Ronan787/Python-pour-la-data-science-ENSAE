@@ -16,6 +16,8 @@ dpe = duckdb.sql("""
     SELECT *
     FROM read_parquet('s3://mboutbal/diffusion/dpe_clean.parquet')
 """).df()
+dpe = dpe[dpe['annee_construction'].between(1700, 2021)]
+
 '''
 ## Carte
 # Fichier avec les contours des départements 
@@ -155,7 +157,8 @@ plt.savefig("bar_plot_classes_énergie.png")
 
 plt.clf()
 #nombre de DPE en fonction de l'année 
-tableau = pd.crosstab(dpe['date_dpe'].dt.year, dpe['classe_ges'])
+#tableau = pd.crosstab(dpe['annee_construction'].dt.year, dpe['classe_ges'])
+tableau = pd.crosstab(dpe['annee_construction'], dpe['classe_ges'])
 print(tableau)
 plt.imshow(tableau, cmap="YlOrRd", aspect="auto")
 
@@ -172,5 +175,8 @@ plt.yticks(
 
 # Ajouter une barre de couleur
 plt.colorbar(label="Nombre de DPE")
+plt.title('Nombre de DPE par année de construction')
+plt.xlabel('Classe GES')
+plt.ylabel('Année de construction')
 plt.savefig("nb_dpe_par_annee.png")
 
