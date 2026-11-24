@@ -19,6 +19,12 @@ bibliography: references.bib
 link-citations: true
 ---
 
+
+```{python}
+#| include: false
+%pip install -r requirements.txt
+```
+
 # Introduction
 
 ## Contexte et problématique
@@ -159,9 +165,6 @@ nb_dpe = duckdb.sql(f"""
 """).fetchall()[0][0]
 
 print("Nombre total de diagnostics :", nb_dpe)
-
-# Montre les 5 premières lignes du dataset
-duckdb.sql(f"SELECT * FROM read_parquet('{path_dpe}') LIMIT 5").df()
 ```
 
 
@@ -174,7 +177,196 @@ Nombre de logement en 2021 Insee RP
 
 
 # Nettoyage
+
 ## DPE
+
+Dans un but exploratoire et pour pouvoir effectué le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ici la distribution des variables de consommations d'énergie et d'émissions de GES
+
+```{python}
+import duckdb
+
+duckdb.sql("""
+    SELECT
+        variable AS "Variable",
+        ROUND(MIN(valeur), 2) AS "Minimum",
+        ROUND(approx_quantile(valeur, 0.01), 2) AS "P1",
+        ROUND(approx_quantile(valeur, 0.25), 2) AS "Q1",
+        ROUND(approx_quantile(valeur, 0.50), 2) AS "Médiane",
+        ROUND(AVG(valeur), 2) AS "Moyenne",
+        ROUND(approx_quantile(valeur, 0.75), 2) AS "Q3",
+        ROUND(approx_quantile(valeur, 0.99), 2) AS "P99",
+        ROUND(MAX(valeur), 2) AS "Maximum"
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_date_22_11.parquet')
+    UNPIVOT (valeur FOR variable IN (consommation_energie, estimation_ges))
+    GROUP BY variable
+    ORDER BY variable
+""").df().style.hide(axis="index")
+
+```
+
+Pour l’analyse, nous retenons les DPE de 2013 à 2021 qui disposent de coordonnées géographiques (afin de pouvoir les localiser ensuite dans les écoquartiers), dont les classes énergie et GES vont de A à G et dont les consommations d’énergie et les émissions de GES sont finies et non négatives. On windsorie au 99 percentile la distribution. Nous excluons les DPE identifiés comme ultramarins ainsi que ceux associés au modèle « Centre commercial ».
+Le tableau de diagnostic donne le nombre de DPE concernés par chaque motif d’exclusion avant nettoyage. Un même DPE peut être compté sous plusieurs motifs.
+
+```{python}
+#| eval: false
+#| echo: true
+# Ce code est un exemple pour appeler les fonctions directement 
+# Cependant, pour des raisons de rapidité, il n'est pas exécuté et
+# seule les deux cellules suivantes le sont
+from scripts.data_cleaning_ademe import bilan_nettoyage, clean_dpe
+
+chemin_parquet_brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
+fichier_nettoye = "dpe_clean.parquet"
+
+# Chaque condition indique quels DPE conserver.
+regles_conservation = {
+    "Coordonnées manquantes": """
+        latitude IS NOT NULL AND longitude IS NOT NULL
+        AND NOT isnan(latitude) AND NOT isnan(longitude)
+    """,
+    "Outre-mer": """
+        LEFT(COALESCE(cog, ''), 2) NOT IN ('97', '98')
+        AND LEFT(COALESCE(code_departement, ''), 2) NOT IN ('97', '98')
+    """,
+    "Date hors 2013–2021 ou manquante":
+        "YEAR(date_dpe) BETWEEN 2013 AND 2021",
+    "Classe énergie invalide ou manquante":
+        "classe_energie IN ('A', 'B', 'C', 'D', 'E', 'F', 'G')",
+    "Classe GES invalide ou manquante":
+        "classe_ges IN ('A', 'B', 'C', 'D', 'E', 'F', 'G')",
+    "Centre commercial":
+        "modele_dpe IS DISTINCT FROM 'Centre commercial'",
+    "Consommation invalide ou manquante":
+        "isfinite(conso_energie) AND conso_energie >= 0",
+    "Émissions GES invalides ou manquantes":
+        "isfinite(emissions_ges) AND emissions_ges >= 0",
+}
+
+# Enregistrer les DPE nettoyés avec leurs indicateurs de winsorisation.
+dpe_nettoye = clean_dpe(chemin_parquet_brut, regles_conservation)
+dpe_nettoye.write_parquet(fichier_nettoye)
+
+# Compter les exclusions et les valeurs winsorisées.
+tableau_diagnostic = bilan_nettoyage(
+    chemin_parquet_brut, regles_conservation, fichier_nettoye
+)
+tableau_diagnostic
+```
+
+Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` lance le nettoyage, calcule le diagnostic et enregistre les deux fichiers sur S3. Pour accélérer le rendu, Quarto lit directement ces fichiers.
+
+```{python}
+import duckdb
+
+chemin_parquet_nettoye = "s3://mboutbal/diffusion/dpe_clean.parquet"
+dpe_nettoye = duckdb.read_parquet(chemin_parquet_nettoye)
+
+print("Nombre de DPE après nettoyage :", dpe_nettoye.aggregate("COUNT(*)").fetchall()[0][0])
+```
+
+```{python}
+import pandas as pd
+
+chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.csv"
+pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
+```
+
+
+
+
+
+
+
+
+
+
+# Nettoyage
+
+## DPE
+
+Nous avons examiné les valeurs manquantes et la distribution des variables avant de fixer les règles de nettoyage. Le tableau ci-dessous résume la consommation d’énergie et les émissions de GES dans la base brute.
+
+```{python}
+import duckdb
+
+duckdb.sql("""
+    SELECT
+        variable AS "Variable",
+        ROUND(MIN(valeur), 2) AS "Minimum",
+        ROUND(approx_quantile(valeur, 0.01), 2) AS "P1",
+        ROUND(approx_quantile(valeur, 0.25), 2) AS "Q1",
+        ROUND(approx_quantile(valeur, 0.50), 2) AS "Médiane",
+        ROUND(AVG(valeur), 2) AS "Moyenne",
+        ROUND(approx_quantile(valeur, 0.75), 2) AS "Q3",
+        ROUND(approx_quantile(valeur, 0.99), 2) AS "P99",
+        ROUND(MAX(valeur), 2) AS "Maximum"
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_date_22_11.parquet')
+    UNPIVOT (valeur FOR variable IN (consommation_energie, estimation_ges))
+    GROUP BY variable
+    ORDER BY variable
+""").df().style.hide(axis="index")
+```
+
+Nous retenons les DPE de 2013 à 2021 ayant des coordonnées géographique (latitude, longitude) afin de permettre le rapprochement avec la base des écoquartiers. Nous gardons les DPE dont les classes énergie et GES sont notés de A à G ainsi que des consommations et émissions finies et non négatives. Nous excluons les DPE identifiés comme ultramarins et le modèle « Centre commercial » pour respecter le périmètre géographique et résidentiel de l’étude.
+
+Les maximums sont très éloignés des P99. Pour limiter le poids des valeurs extrêmes dans les moyennes tout en conservant les DPE, nous windsorisons la consommation à **551,07** et les émissions à **102,38**, leurs P99 estimés sur la base brute. Deux indicateurs signalent les valeurs plafonnées.
+
+```{python}
+#| eval: false
+#| echo: true
+
+from scripts.data_cleaning_ademe import bilan_nettoyage, clean_dpe
+
+chemin_parquet_brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
+fichier_nettoye = "dpe_clean.parquet"
+
+# Chaque condition indique quels DPE conserver.
+regles_conservation = {
+    "Coordonnées manquantes": """
+        latitude IS NOT NULL AND longitude IS NOT NULL
+        AND NOT isnan(latitude) AND NOT isnan(longitude)
+    """,
+    "Outre-mer": """
+        LEFT(COALESCE(cog, ''), 2) NOT IN ('97', '98')
+        AND LEFT(COALESCE(code_departement, ''), 2) NOT IN ('97', '98')
+    """,
+    "Date hors 2013–2021 ou manquante":
+        "YEAR(date_dpe) BETWEEN 2013 AND 2021",
+    "Classe énergie invalide ou manquante":
+        "classe_energie IN ('A', 'B', 'C', 'D', 'E', 'F', 'G')",
+    "Classe GES invalide ou manquante":
+        "classe_ges IN ('A', 'B', 'C', 'D', 'E', 'F', 'G')",
+    "Centre commercial":
+        "modele_dpe IS DISTINCT FROM 'Centre commercial'",
+    "Consommation invalide ou manquante":
+        "isfinite(conso_energie) AND conso_energie >= 0",
+    "Émissions GES invalides ou manquantes":
+        "isfinite(emissions_ges) AND emissions_ges >= 0",
+}
+
+dpe_nettoye = clean_dpe(chemin_parquet_brut, regles_conservation)
+dpe_nettoye.write_parquet(fichier_nettoye)
+
+bilan_nettoyage(chemin_parquet_brut, regles_conservation, fichier_nettoye)
+```
+
+Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` produit la base nettoyée et le tableau de diagnostic, puis les enregistre sur S3. Quarto lit directement ces fichiers pour éviter un temps de compilation trop long du fichier quarto.
+
+```{python}
+chemin_parquet_nettoye = "s3://mboutbal/diffusion/dpe_clean.parquet"
+dpe_nettoye = duckdb.read_parquet(chemin_parquet_nettoye)
+
+print("Nombre de DPE après nettoyage :", dpe_nettoye.aggregate("COUNT(*)").fetchall()[0][0])
+```
+
+Pour chaque règle de nettoyage, le tableau indique combien de DPE sont concernés pour chaque motif d’exclusion sur la base brute. Un même DPE peut être compté sous plusieurs motifs. Les deux dernières lignes indiquent, parmi les DPE conservés, combien ont vu leur consommation d’énergie ou leurs émissions de GES plafonnées.
+
+```{python}
+import pandas as pd
+
+chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.csv"
+pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
+```
 
 
 # Bibliographie
