@@ -156,7 +156,7 @@ La carte montre de fortes différences de couverture entre les communes. Dans un
 
 Les données proviennent du jeu de données DPE Logements (avant juillet 2021) de l’ADEME (Agence de la transition écologique). Il rassemble les diagnostics de logements réalisés avant l’entrée en vigueur de la réforme du DPE le 1er juillet 2021 ([Source et documentation de l’API](https://data.ademe.fr/datasets/dpe-france/api-doc)).
 
-Nous avons sélectionné les variables potentiellement utiles à notre analyse à partir du dictionnaire de l’ADEME et défini leur type après une première exploration des données. La base comprend un total 10 728 950 diagnostics. Le script **scripts/data_extraction_ademe.py** les récupère dans l’ordre de leur numéro de DPE et traite un lot de 10 000 lignes à la fois pour limiter l’usage de la mémoire. Les données sont écrites au format Parquet, qui permet de les compresser et de lire uniquement les colonnes nécessaires à l’analyse. Avec DuckDB, nous vérifions que le nombre de lignes correspond au total annoncé par l’API et que les numéros de DPE sont renseignés et uniques. Nous stockons ensuite le fichier validé sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet) pour le réutiliser sans relancer l’extraction, qui prend deux à trois heures.
+Nous avons sélectionné les variables potentiellement utiles à notre analyse à partir du dictionnaire de l’ADEME et défini leur type après une première exploration des données. Le script **scripts/data_extraction_ademe.py** les récupère dans l’ordre de leur numéro de DPE et traite un lot de 10 000 lignes à la fois pour limiter l’usage de la mémoire. Les données sont écrites au format Parquet, qui permet de les compresser et de lire uniquement les colonnes nécessaires à l’analyse. Avec DuckDB, nous vérifions que le nombre de lignes correspond au total annoncé par l’API et que les numéros de DPE sont renseignés et uniques. Nous stockons ensuite le fichier validé sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet) pour le réutiliser sans relancer l’extraction, qui prend deux à trois heures. 
 
 ```{python}
 import duckdb
@@ -169,7 +169,8 @@ nb_dpe = duckdb.sql(f"""
     FROM read_parquet('{path_dpe}')
 """).fetchall()[0][0]
 
-print("Nombre total de diagnostics :", nb_dpe)
+print("Nombre total de DPE :", nb_dpe)
+print("Nombre total de DPE :", nb_dpe)
 ```
 
 
@@ -184,7 +185,7 @@ Source du nombre de logements par commune — Insee, recensement de la populatio
 
 # Nettoyage
 
-## DPE
+## Données DPE
 
 Dans un but exploratoire et pour pouvoir effectuer le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ci-dessous la distribution des variables de consommation d'énergie et d'émission de GES.
 
