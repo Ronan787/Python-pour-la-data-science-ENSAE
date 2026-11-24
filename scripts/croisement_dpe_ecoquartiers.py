@@ -43,7 +43,7 @@ from data_cleaning_ecoquartiers import CRS_TRAVAIL, load_clean_ecoquartiers
 # DPE nettoyés (fichier parquet produit par le nettoyage des DPE).
 # À COMPLÉTER quand le nettoyage est terminé : bucket et nom du fichier.
 DPE_BUCKET = "mboutbal"
-DPE_FILE = "dpe_date_22_11.parquet"        # nom exact du parquet nettoyé dans diffusion/
+DPE_FILE = "dpe_clean.parquet"        # nom exact du parquet nettoyé dans diffusion/
 DPE_S3_PATH = f"{DPE_BUCKET}/diffusion/{DPE_FILE}"
 
 GEO_SCORE_MIN = 0.5  # à fixer et à justifier (voir la distribution de geo_score)
