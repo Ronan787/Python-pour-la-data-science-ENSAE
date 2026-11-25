@@ -44,7 +44,6 @@ dpe = duckdb.sql("""
     SELECT *
     FROM read_parquet('s3://mboutbal/diffusion/dpe_clean.parquet')
 """).df()
-dpe = dpe[dpe['annee_construction'].between(1700, 2021)]
 
 
 ## Carte
@@ -151,40 +150,16 @@ def barplot(colonne = 'classe_ges'):
     upload_to_s3(BUCKET_R, f"bar_plot_{colonne}.png")
     plt.clf()
 
-
-#nombre de DPE en fonction de l'année 
-#tableau = pd.crosstab(dpe['annee_construction'].dt.year, dpe['classe_ges'])
-tableau = pd.crosstab(dpe['annee_construction'], dpe['classe_ges'])
-print(tableau)
-plt.imshow(tableau, cmap="YlOrRd", aspect="auto")
-
-# Ajoute des catégories sur les axes
-plt.xticks(
-    range(len(tableau.columns)),
-    tableau.columns
-)
-
-plt.yticks(
-    range(len(tableau.index)),
-    tableau.index
-)
-
-# Ajouter une barre de couleur
-plt.colorbar(label="Nombre de DPE")
-plt.title('Nombre de DPE par année de construction')
-plt.xlabel('Classe GES')
-plt.ylabel('Année de construction')
-plt.savefig("nb_dpe_par_annee.png")
-
-
-
 def boxplot(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.clf()
     dpe.boxplot(column=[colonne], by= by)
     plt.suptitle('')
     plt.title('Boxplots de {} par {}'.format(colonne, by))
     plt.xlabel(f'{by}')
-    plt.ylabel(f'{colonne} en kwH ')
+    if colonne == 'classe_ges':
+        plt.ylabel(f'{colonne} en kgéqCO2/m².an')
+    else :
+        plt.ylabel(f'{colonne} en kWhEP/m².an')
     plt.legend()
     plt.savefig(f"boxplot_{by}.png")
     upload_to_s3(BUCKET_R, f"boxplot_{by}.png")
@@ -215,22 +190,52 @@ def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.suptitle('')
     plt.title('Boxplots de {} par {}'.format(colonne, by))
     plt.xlabel(f'{by}')
-    plt.ylabel(f'{colonne} en kwH ')
+    if colonne == 'classe_ges':
+        plt.ylabel(f'{colonne} en kgéqCO2/m².an')
+    else :
+        plt.ylabel(f'{colonne} en kWhEP/m².an')
     plt.legend()
     plt.savefig(f"boxplot_avec_couleur_{by}.png")
     upload_to_s3(BUCKET_R, f"boxplot_avec_couleur_{by}.png")
     plt.clf()
 
+extremites = [1901 + i*20 for i in range(0, 7)]
+labels = ['Entre {} et {}'.format(extremites[i], extremites[i+1]) for i in range(0, 6)]
+
+dpe_reduit = dpe[dpe['annee_construction'].between(1901, 2021)]
+dpe_reduit["tranche_annee"] = pd.cut(dpe_reduit['annee_construction'], bins=extremites, labels=labels)
+
+#nombre de DPE en fonction de l'année 
+#tableau = pd.crosstab(dpe['annee_construction'].dt.year, dpe['classe_ges'])
+tableau = pd.crosstab(dpe_reduit["tranche_annee"], dpe_reduit['classe_ges'])
+print(tableau)
+plt.imshow(tableau, cmap="YlOrRd", aspect="auto")
+
+# Ajoute des catégories sur les axes
+plt.xticks(
+    range(len(tableau.columns)),
+    tableau.columns
+)
+
+plt.yticks(
+    range(len(tableau.index)),
+    tableau.index
+)
+
+# Ajouter une barre de couleur
+plt.colorbar(label="Nombre de DPE")
+plt.title('Nombre de DPE par année de construction')
+plt.xlabel('Classe GES')
+plt.ylabel('Année de construction')
+plt.savefig("nb_dpe_par_annee.png")
+
 if __name__ == "__main__":
+    '''
     carte('classe_ges')
-    print('carte classe_ges fait')
     carte('classe_energie')
-    print('carte classe_energie fait')
     barplot('classe_ges')
-    print('barplot classe_ges fait')
     barplot('classe_energie')
-    print('barplot classe_energie fait')
     boxplot('emissions_ges', 'classe_ges')
     boxplot_avec_couleurs('emissions_ges', 'classe_ges')
-    print('boxplot classe_ges fait')
     boxplot('conso_energie', 'classe_energie')
+    '''
