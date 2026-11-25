@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import duckdb
 import pandas as pd
+import mimetypes
 #from data_extraction_ademe.py import upload_to_s3
 
 
@@ -18,7 +19,7 @@ dpe = duckdb.sql("""
 """).df()
 dpe = dpe[dpe['annee_construction'].between(1700, 2021)]
 
-'''
+
 ## Carte
 # Fichier avec les contours des départements 
 BUCKET_R = "ron"
@@ -111,8 +112,15 @@ def upload_to_s3(s3_bucket, file):
 
     file_path_out_s3 = "{}/diffusion/{}".format(s3_bucket, file)
 
+    content_type, _ = mimetypes.guess_type(file)
+
+    if content_type is None:
+        content_type = "application/octet-stream"
+
     with open(file, "rb") as file_in:
-        with fs.open(file_path_out_s3, "wb") as file_out:
+        with fs.open(file_path_out_s3, "wb",
+            ContentType=content_type,
+            ContentDisposition="inline") as file_out:
             shutil.copyfileobj(file_in, file_out)
 
     print(f"Fichier exporté vers s3://{file_path_out_s3}")
@@ -180,3 +188,4 @@ plt.xlabel('Classe GES')
 plt.ylabel('Année de construction')
 plt.savefig("nb_dpe_par_annee.png")
 
+'''
