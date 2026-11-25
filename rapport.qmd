@@ -281,7 +281,13 @@ chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.c
 pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
 ```
 # Statistiques descriptives à l'échelle nationale 
-##
+
+Les statistiques descriptives à l'échelle nationales contiennent deux volets : le premier concerne l'impact en termes d’émissions de gaz à effet de serre (DPE « climat ») et le second, la consommation d’énergie (DPE « énergie ») du bâtiment. 
+Dans les deux volets, les mêmes cartes et graphiques sont réalisés. 
+Le code qui sert à générer les cartes et les graphiques met du temps à tourner. Pour que le quarto ne tarde pas à s'ouvrir, les cartes et les graphiques ont été enregistrés en amont sur le bucket. Ils sont ensuite ouverts directement depuis le bucket, ce qui évite de prendre du temps à les générer.
+
+## DPE « climat »
+### Répartition des étiquettes 
 <div style="width: 100%; height: 700px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/bar_plot_classe_ges.png"
@@ -292,8 +298,10 @@ pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
   </iframe>
 </div>
 
+Les étiquettes sont inégalement réparties. Les étiquettes F et G, et donc les passoires énergétiques, sont présentes en faibles proportions (< 8%). L'étiquette C est majoritaire avec une proportion d'un quart. Il paraît logique que les étiquettes DPE renvoyant à de faibles émissions de GES soient majoritaires. En effet, on peut s'attendre à ce que les bâtiments neufs, pour lesquels la réalisation d'un DPE est obligatoire, aient une faible émissions de GES, puisqu'ils ont été construits avec connaissance de cet enjeux. De plus, nous verrons par la suite que les bâtiments neufs représentent la majorité des DPE recueillis. 
 
-## Carte classe_estimation_ges
+### Répartitions des étiquettes et taux de passoires par département
+La carte ci-dessous représente pour chaque département la répartitions des étiquettes, ainsi que le taux de passoires dans le département. La répartition des étiquettes s'affiche en survolant le département avec la souris.
 
 <div style="width: 100%; height: 700px; margin: 20px 0;">
   <iframe
@@ -305,7 +313,9 @@ pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
   </iframe>
 </div>
 
-##
+Nous constatons que les départements présents sur le littoral au sud ont un faible taux de passoires énergétiques (en dessous de 5%). Au contraire, le centre de la France et le nord-est présentent un fort taux de passoires, supérieur à 16%, voir à 19% dans certains départements. Le reste du terrtoire a un taux de passoire compris entre 5% et 16%. La carte laisse à penser que le climat impacte le DPE des bâtiments. 
+
+### Lien entre émission de gaz à effet de serre et étiquette 
 
 ```{python}
 import duckdb
@@ -355,6 +365,7 @@ plt.show()
   </iframe>
 </div>
 
+Les bandes de couleurs représentent les classes théoriques obtenues à partir des émissions de gaz à effet de serre théoriques. 
 <div style="width: 100%; height: 700px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_avec_couleur_classe_ges.png"
@@ -365,8 +376,10 @@ plt.show()
   </iframe>
 </div>
 
+On constate que certains points ont des étiquettes qui ne correspondent pas à leur émission de gaz à effet de serre théorique. On s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les box sont plutôt centrées. 
 
-## 
+
+### Etiquettes et année de construction
 
 <div style="width: 100%; height: 700px; margin: 20px 0;">
   <iframe
@@ -378,9 +391,15 @@ plt.show()
   </iframe>
 </div>
 
+Peu de DPE ont été réalisés sur des bâtiments construits avant 1941, et ce quelle que soit l'étiquette. Les bâtiments construits entre 1941 et 1961 ont une majorité d'étiquette E. Au contraire, les bâtiments récemment construits, entre 2001 et 20021 ont une majorité d'étiquettes A, B et C. On constate deux points : 
+1) le DPE est meilleur pour des bâtiments récents,
+2) la majorité des DPE réalisés l'ont été sur des bâtiments construits récemment (après 2001)
+
+Le deuxième point nous amène à considérer plus en détail les bâtiments construits entre 2001 et 2021 : 
+
 <div style="width: 100%; height: 700px; margin: 20px 0;">
   <iframe
-    src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ges.png"
+src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ges.png"
     width="100%"
     height="500px"
     style="border: 0;"
@@ -388,6 +407,7 @@ plt.show()
   </iframe>
 </div>
 
+Quelle que soit l'année, on remarque un faible nombre de passoires énergétiques. Les bâtiments construits avant 2007 ont en majorité des étiquettes C, D et E. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
 
 # Bibliographie
 
