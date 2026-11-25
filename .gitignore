@@ -43,6 +43,7 @@ Thumbs.db
 ecoquartiers/
 insee_filosofi/
 resultats/
+figures_ecoquartiers/
 
 # Résultats intermédiaires (croisement DPE x écoquartiers), recalculables
 resultats/

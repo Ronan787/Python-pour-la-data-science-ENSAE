@@ -6,3 +6,6 @@ duckdb==1.5.6
 folium==1.0.0
 geopandas==1.2.0
 s3fs==2026.9.0
+matplotlib==3.11.2
+pyogrio==0.13.0
+shapely==2.2.0
