@@ -288,7 +288,7 @@ Le code qui sert à générer les cartes et les graphiques met du temps à tourn
 
 ## DPE « climat »
 ### Répartition des étiquettes 
-<div style="width: 100%; height: 700px; margin: 20px 0;">
+<div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/bar_plot_classe_ges.png"
     width="100%"
@@ -301,9 +301,9 @@ Le code qui sert à générer les cartes et les graphiques met du temps à tourn
 Les étiquettes sont inégalement réparties. Les étiquettes F et G, et donc les passoires énergétiques, sont présentes en faibles proportions (< 8%). L'étiquette C est majoritaire avec une proportion d'un quart. Il paraît logique que les étiquettes DPE renvoyant à de faibles émissions de GES soient majoritaires. En effet, on peut s'attendre à ce que les bâtiments neufs, pour lesquels la réalisation d'un DPE est obligatoire, aient une faible émissions de GES, puisqu'ils ont été construits avec connaissance de cet enjeux. De plus, nous verrons par la suite que les bâtiments neufs représentent la majorité des DPE recueillis. 
 
 ### Répartitions des étiquettes et taux de passoires par département
-La carte ci-dessous représente pour chaque département la répartitions des étiquettes, ainsi que le taux de passoires dans le département. La répartition des étiquettes s'affiche en survolant le département avec la souris.
+La carte ci-dessous représente pour chaque département de France métropolitaine la répartitions des étiquettes, ainsi que le taux de passoires dans le département. La répartition des étiquettes s'affiche en survolant le département avec la souris.
 
-<div style="width: 100%; height: 700px; margin: 20px 0;">
+<div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/carte_classe_ges.html"
     width="100%"
@@ -355,7 +355,7 @@ plt.show()
 
 ```
 
-<div style="width: 100%; height: 700px; margin: 20px 0;">
+<div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_classe_ges.png"
     width="100%"
@@ -366,7 +366,7 @@ plt.show()
 </div>
 
 Les bandes de couleurs représentent les classes théoriques obtenues à partir des émissions de gaz à effet de serre théoriques. 
-<div style="width: 100%; height: 700px; margin: 20px 0;">
+<div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_avec_couleur_classe_ges.png"
     width="100%"
@@ -381,7 +381,7 @@ On constate que certains points ont des étiquettes qui ne correspondent pas à 
 
 ### Etiquettes et année de construction
 
-<div style="width: 100%; height: 700px; margin: 20px 0;">
+<div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_classe_ges.png"
     width="100%"
@@ -397,7 +397,7 @@ Peu de DPE ont été réalisés sur des bâtiments construits avant 1941, et ce 
 
 Le deuxième point nous amène à considérer plus en détail les bâtiments construits entre 2001 et 2021 : 
 
-<div style="width: 100%; height: 700px; margin: 20px 0;">
+<div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
 src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ges.png"
     width="100%"
