@@ -141,7 +141,7 @@ def barplot(colonne = 'classe_ges'):
         .rename('proportion')
         .reset_index()
         .sort_values(by = colonne)
-        .plot.bar(x = colonne, y = 'proportion')
+        .plot.bar(x = colonne, y = 'proportion', legend = False)
     )
     #légendes
     plt.title(f'Proportion de chaque {colonne}')
@@ -185,8 +185,40 @@ def boxplot(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.title('Boxplots de {} par {}'.format(colonne, by))
     plt.xlabel(f'{by}')
     plt.ylabel(f'{colonne} en kwH ')
+    plt.legend()
     plt.savefig(f"boxplot_{by}.png")
     upload_to_s3(BUCKET_R, f"boxplot_{by}.png")
+    plt.clf()
+
+#440154', '#443983', '#31688e', '#21918c', '#35b779', '#90d743', '#fde725'
+def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
+    plt.clf()
+    dpe.boxplot(column=[colonne], by= by)
+    ymin, ymax = plt.ylim()
+    if by == 'classe_ges': 
+        plt.axhspan(ymin, 5, color='#440154', alpha=0.2, label='classe A')
+        plt.axhspan(6, 10, color='#443983', alpha=0.2, label='classe B')
+        plt.axhspan(11, 20, color='#31688e', alpha=0.2, label='classe C')
+        plt.axhspan(21, 35, color='#21918c', alpha=0.2, label='classe D')
+        plt.axhspan(36, 55, color='#35b779', alpha=0.2, label='classe E')
+        plt.axhspan(56, 80, color='#90d743', alpha=0.2, label='classe F')
+        plt.axhspan(81, ymax, color='#fde725', alpha=0.2, label='classe G')
+    else : 
+        plt.axhspan(ymin, 50, color='#440154', alpha=0.2, label='classe A')
+        plt.axhspan(51, 90, color='#443983', alpha=0.2, label='classe B')
+        plt.axhspan(91, 150, color='#31688e', alpha=0.2, label='classe C')
+        plt.axhspan(151, 230, color='#21918c', alpha=0.2, label='classe D')
+        plt.axhspan(231, 330, color='#35b779', alpha=0.2, label='classe E')
+        plt.axhspan(331, 450, color='#90d743', alpha=0.2, label='classe F')
+        plt.axhspan(451, ymax, color='#fde725', alpha=0.2, label='classe G')
+
+    plt.suptitle('')
+    plt.title('Boxplots de {} par {}'.format(colonne, by))
+    plt.xlabel(f'{by}')
+    plt.ylabel(f'{colonne} en kwH ')
+    plt.legend()
+    plt.savefig(f"boxplot_avec_couleur_{by}.png")
+    upload_to_s3(BUCKET_R, f"boxplot_avec_couleur_{by}.png")
     plt.clf()
 
 if __name__ == "__main__":
@@ -199,5 +231,6 @@ if __name__ == "__main__":
     barplot('classe_energie')
     print('barplot classe_energie fait')
     boxplot('emissions_ges', 'classe_ges')
+    boxplot_avec_couleurs('emissions_ges', 'classe_ges')
     print('boxplot classe_ges fait')
     boxplot('conso_energie', 'classe_energie')
