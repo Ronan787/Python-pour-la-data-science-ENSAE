@@ -280,19 +280,114 @@ import pandas as pd
 chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.csv"
 pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
 ```
-
-
-## Carte classe_estimation_ges
-
+# Statistiques descriptives à l'échelle nationale 
+##
 <div style="width: 100%; height: 700px; margin: 20px 0;">
   <iframe
-    src="https://minio.lab.sspcloud.fr/ron/diffusion/carte.html"
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/bar_plot_classe_ges.png"
     width="100%"
     height="500px"
     style="border: 0;"
     loading="lazy">
   </iframe>
 </div>
+
+
+## Carte classe_estimation_ges
+
+<div style="width: 100%; height: 700px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/carte_classe_ges.html"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+##
+
+```{python}
+import duckdb
+import matplotlib.pyplot as plt
+import pandas as pd
+
+dpe = duckdb.sql("""
+    SELECT *
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_clean.parquet')
+""").df()
+
+stat_dpe = (
+    dpe
+    .groupby('classe_ges')
+    ['emissions_ges']
+    .describe()
+)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+
+ax.axis('off')  # pour masquer le repère cartésien
+
+table = ax.table(
+    cellText=stat_dpe.values.round(2),
+    colLabels=stat_dpe.columns,
+    rowLabels=stat_dpe.index,
+    loc="center",
+    cellLoc="center",
+    bbox=[0, 0, 1, 1]  # Occupe toute la surface disponible
+)
+
+table.auto_set_font_size(False)
+table.set_fontsize(11)
+
+plt.tight_layout()
+plt.show()
+
+```
+
+<div style="width: 100%; height: 700px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_classe_ges.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+<div style="width: 100%; height: 700px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_avec_couleur_classe_ges.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+
+## 
+
+<div style="width: 100%; height: 700px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_classe_ges.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+<div style="width: 100%; height: 700px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ges.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
 
 # Bibliographie
 
