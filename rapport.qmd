@@ -177,7 +177,6 @@ print("Nombre total de DPE :", nb_dpe)
 ## Les EcoQuartiers
 
 {{< include ecoquartiers_donnees.qmd >}}
-{{< include ecoquartiers_donnees.qmd >}}
  
 ## Autres données
 
