@@ -7,8 +7,8 @@ SOURCE
     API de data.ademe.fr (aucune clé nécessaire).
 
 UTILISATION
-    Configurer le paramètre S3_BUCKET en renseignant le nom de son bucket S3 pour enregistrer
-    une copie des données (line 136)
+    Configurer les paramètre S3_BUCKET en renseignant le nom de son bucket S3 pour enregistrer
+    une copie des données et VERSION qui sera le nom du fichier
     pip install -r requirements.txt
     python scripts/data_extraction_ademe.py
 """
@@ -23,10 +23,20 @@ import requests
 import s3fs
 from tqdm.auto import tqdm
 
-# %% 1. Explorer le dictionnaire ADEME
+# PARAMETRES A CONFIGURER
+S3_BUCKET = "mboutbal"  # Nom du bucket à paramétrer pour créer une sauvegarde
+VERSION = "dpe_2026-11-25"  # Nom du fichier final dans S3
+
+# URL de l'API (source des données)
 URL = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe-france"
 
+# Création du chemin de sauvegarde dans le répertoire de travail
+fichier = Path("dpe_ademe/dpe.parquet")
+fichier.parent.mkdir(exist_ok=True)
+temporaire = fichier.with_suffix(".tmp")  # Fichier temporaire avant écriture en parquet
 
+
+# Fonction pour requêter l'api
 def lire_api(url, params=None):
     """Requête GET à l'ADEME et lecture de la réponse JSON."""
     reponse = requests.get(url, params=params, timeout=120)
@@ -34,13 +44,11 @@ def lire_api(url, params=None):
     return reponse.json()
 
 
-# Extraction du schéma des variables
+# Extraction du schéma des variables pour exploration
 dictionnaire_var = pd.DataFrame(lire_api(URL)["schema"])
 print(dictionnaire_var[["key", "title", "description", "type", "format"]])
 
-
-# %% 2. Choisir les colonnes et leurs types
-# Création d'un dictionnaire des variables choisies avec leur type souhaité
+# Choix des colonnes à extraire et de leur type
 types_colonnes = {
     "numero_dpe": pa.string(),
     "nom_methode_dpe": pa.string(),
@@ -61,11 +69,10 @@ types_colonnes = {
     "geo_score": pa.float64(),
 }
 
-# Liste du nom des variables
+# List récupère uniquement les noms des variables
 colonnes = list(types_colonnes)
-
-
-# %% 3. Télécharger, vérifier et enregistrer le Parquet
+# pa.schema() transforme les couples (nom, type) en schéma PyArrow
+schema = pa.schema(list(types_colonnes.items()))
 
 # Paramètres pour la requête API d'extraction des données
 params = {
@@ -78,43 +85,48 @@ params = {
 page_dpe = lire_api(URL + "/lines", params)  # Récupération de la 1ère page (initialisation)
 nombre_lignes_attendu = page_dpe["total"]    # Récupération du nb d'obs à extraire
 
-# Préparation de la sortie du fichier parquet
-schema = pa.schema(list(types_colonnes.items()))
-
-# Création du chemin de sauvegarde dans le répertoire de travail
-fichier = Path("dpe_ademe/dpe.parquet")
-fichier.parent.mkdir(exist_ok=True)
-temporaire = fichier.with_suffix(".tmp")
-
-# Ajout d'une barre de progression dans l'extraction (/nb total attendu)
+# ------- BLOC D'EXTRACTION PRINCIPAL --------#
 with (
     pq.ParquetWriter(temporaire, schema) as parquet,
     tqdm(
-        total=nombre_lignes_attendu,
+        total=nombre_lignes_attendu,  # nb total de ligne à télécharger
         desc="Téléchargement ADEME",
         unit=" lignes",
-    ) as barre_progression,
+    ) as barre_progression,  # ajout d'une barre de progression dans l'extraction
 ):
     while True:
+        # results contient toutes les obs à extraire
         donnees = pd.DataFrame(page_dpe["results"], columns=colonnes)
+
+        # Conversion de la date avant application du schéma
         donnees["date_etablissement_dpe"] = pd.to_datetime(
             donnees["date_etablissement_dpe"], format="%Y-%m-%d"
-        ).dt.date  # Conversion de la date avant application du schéma
+        ).dt.date
+
+        # application du schema (cf. param du début) : même types de var à toutes les pages
         table = pa.Table.from_pandas(donnees, schema=schema, preserve_index=False)
-        parquet.write_table(table)  # écriture du parquet avec les types choisis
-        barre_progression.update(table.num_rows)  # avancement barre de progression
-        lien_suivant = page_dpe.get("next")  # chargement de la page suivante
+
+        # écriture du parquet avec les types choisis
+        parquet.write_table(table)
+
+        # avancement barre de progression
+        barre_progression.update(table.num_rows)
+
+        # chargement de la page suivante ou fin de l'extraction si pas de page suivante
+        lien_suivant = page_dpe.get("next")
         if not lien_suivant:
             break
         page_dpe = lire_api(lien_suivant)
 
 print("Vérification du nombre de lignes et des identifiants…")
 
-# DuckDB compte les lignes et les numéros de DPE distincts et non manquants.
+# ------- Vérification de la cohérence du fichier parquet créé avec DuckDB -----#
+
+# Requête pour avoir le nb de lignes et le nb de numéros de DPE distincts
 nombre_lignes, nombre_ids = duckdb.execute(
     "SELECT COUNT(*), COUNT(DISTINCT numero_dpe) FROM read_parquet(?)",
     [str(temporaire)],
-).fetchone()
+).fetchone()  # .fetchone() récupère le résultat de la requête SQL
 
 if nombre_lignes != nombre_lignes_attendu:
     raise ValueError(
@@ -131,13 +143,10 @@ print(f"{nombre_lignes:,} lignes, chacune avec un numéro de DPE unique.")
 print(pq.read_schema(fichier))
 
 
-# %% 4. Enregistrer le Parquet dans le bucket S3 si extraction réussie
-
-S3_BUCKET = "mboutbal"  # Nom du bucket à paramétrer
-
+# ----- Enregistrement d'une copie dans le bucket S3 --------#
 s3 = s3fs.S3FileSystem(
     client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
 )
-
-s3.put(str(fichier), f"{S3_BUCKET}/diffusion/dpe_date_22_11.parquet")
+# Enregistrement selon les paramètres du début
+s3.put(str(fichier), f"{S3_BUCKET}/diffusion/{VERSION}.parquet")
 print("Fichier copié dans le bucket.")
