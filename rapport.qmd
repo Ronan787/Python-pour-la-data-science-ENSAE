@@ -175,6 +175,7 @@ print("Nombre total de DPE :", nb_dpe)
 
 
 ## Les EcoQuartiers
+{{< include ecoquartiers_donnees.qmd >}}
  
 ## Autres données
 
@@ -281,6 +282,7 @@ chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.c
 pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
 ```
 
+{{< include ecoquartiers_nettoyage.qmd >}}
 
 ## Carte classe_estimation_ges
 
@@ -293,6 +295,8 @@ pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
     loading="lazy">
   </iframe>
 </div>
+
+{{< include ecoquartiers.qmd >}}
 
 # Bibliographie
 
