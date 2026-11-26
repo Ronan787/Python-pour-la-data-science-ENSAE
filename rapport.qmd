@@ -335,26 +335,6 @@ Nous constatons que les départements présents sur le littoral au sud et au sud
 
 ### Lien entre émissions de gaz à effet de serre et étiquette 
 
-<div style="width: 100%; height: 500px; margin: 20px 0;">
-  <iframe
-    src="https://minio.lab.sspcloud.fr/ron/diffusion/tableau_classe_ges.png"
-    width="100%"
-    height="500px"
-    style="border: 0;"
-    loading="lazy">
-  </iframe>
-</div>
-
-<div style="width: 100%; height: 500px; margin: 20px 0;">
-  <iframe
-    src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_classe_ges.png"
-    width="100%"
-    height="500px"
-    style="border: 0;"
-    loading="lazy">
-  </iframe>
-</div>
-
 Pour chaque logement, la base indique la classe DPE « climat » (de A à G) et les émissions estimées de gaz à effet de serre. Le graphique permet de vérifier si la classe renseignée correspond à celle attendue d’après ces émissions. Prenons la classe D. La bande de couleur indique que les logements dont les émissions se situent entre environ 21 et 35 kg CO₂e/m²/an devraient être classés D. La boîte au-dessus de la lettre D montre comment se répartissent les émissions des logements classés D dans la base. Les valeurs situées dans la bande violettes sont donc cohérentes avec la classe renseignée. 
 
 Les bandes de couleurs représentent les classes théoriques obtenues à partir des émissions de gaz à effet de serre théoriques. 
@@ -372,12 +352,6 @@ On constate que certains points ont des étiquettes qui ne correspondent pas à 
 
 
 ### Étiquettes DPE selon l’année de construction du bâti
-
-::: {layout-ncol=2}
-![Nombre de DPE par année de construction et par classe GES](https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_classe_ges.png)
-
-![Zoom sur le nombre de DPE par année de construction et par classe GES](https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ges.png)
-:::
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
