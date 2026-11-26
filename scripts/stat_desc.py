@@ -140,7 +140,7 @@ def barplot(colonne = 'classe_ges'):
         .rename('proportion')
         .reset_index()
         .sort_values(by = colonne)
-        .plot.bar(x = colonne, y = 'proportion', legend = False)
+        .plot.bar(x = colonne, y = 'proportion', legend = False, color='#6BAED6')
     )
     #légendes
     plt.title(f'Proportion de chaque {colonne}')
@@ -168,24 +168,28 @@ def boxplot(colonne = 'emissions_ges', by = 'classe_ges'):
 #440154', '#443983', '#31688e', '#21918c', '#35b779', '#90d743', '#fde725'
 def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.clf()
-    dpe.boxplot(column=[colonne], by= by)
+    ax = dpe.boxplot(column=[colonne], by=by)
+    ax.grid(False)
+    ax.xaxis.grid(False)
+    ax.yaxis.grid(False)
+
     ymin, ymax = plt.ylim()
     if by == 'classe_ges': 
-        plt.axhspan(ymin, 5, color='#440154', alpha=0.2, label='classe A')
-        plt.axhspan(6, 10, color='#443983', alpha=0.2, label='classe B')
-        plt.axhspan(11, 20, color='#31688e', alpha=0.2, label='classe C')
-        plt.axhspan(21, 35, color='#21918c', alpha=0.2, label='classe D')
-        plt.axhspan(36, 55, color='#35b779', alpha=0.2, label='classe E')
-        plt.axhspan(56, 80, color='#90d743', alpha=0.2, label='classe F')
-        plt.axhspan(81, ymax, color='#fde725', alpha=0.2, label='classe G')
+        plt.axhspan(ymin, 5, color='#4D4D4D', alpha=0.2, label='classe A') # Gris foncé
+        plt.axhspan(6, 10, color='#238B45', alpha=0.2, label='classe B') # Vert foncé
+        plt.axhspan(11, 20, color='#2171B5', alpha=0.2, label='classe C') # Bleu foncé
+        plt.axhspan(21, 35, color='#7F7F7F', alpha=0.2, label='classe D') # Gris moyen
+        plt.axhspan(36, 55, color='#31A354', alpha=0.2, label='classe E') # Vert moyen
+        plt.axhspan(56, 80, color='#6BAED6', alpha=0.2, label='classe F') # Bleu moyen
+        plt.axhspan(81, ymax, color='#BDD7E7', alpha=0.2, label='classe G') # Bleu très clair
     else : 
-        plt.axhspan(ymin, 50, color='#440154', alpha=0.2, label='classe A')
-        plt.axhspan(51, 90, color='#443983', alpha=0.2, label='classe B')
-        plt.axhspan(91, 150, color='#31688e', alpha=0.2, label='classe C')
-        plt.axhspan(151, 230, color='#21918c', alpha=0.2, label='classe D')
-        plt.axhspan(231, 330, color='#35b779', alpha=0.2, label='classe E')
-        plt.axhspan(331, 450, color='#90d743', alpha=0.2, label='classe F')
-        plt.axhspan(451, ymax, color='#fde725', alpha=0.2, label='classe G')
+        plt.axhspan(ymin, 50, color='#4D4D4D', alpha=0.2, label='classe A') # Gris foncé
+        plt.axhspan(51, 90, color='#238B45', alpha=0.2, label='classe B') # Vert foncé
+        plt.axhspan(91, 150, color='#2171B5', alpha=0.2, label='classe C') # Bleu foncé
+        plt.axhspan(151, 230, color='#7F7F7F', alpha=0.2, label='classe D') # Gris moyen
+        plt.axhspan(231, 330, color='#31A354', alpha=0.2, label='classe E') # Vert moyen
+        plt.axhspan(331, 450, color='#6BAED6', alpha=0.2, label='classe F') # Bleu moyen
+        plt.axhspan(451, ymax, color='#BDD7E7', alpha=0.2, label='classe G') # Bleu très clair
 
     plt.suptitle('')
     plt.title('Boxplots de {} par {}'.format(colonne, by))
@@ -260,7 +264,85 @@ def par_annee_construction_zoom(colonne = 'classe_ges'):
     plt.savefig(f"nb_dpe_par_annee_zoom_{colonne}.png")
     upload_to_s3(BUCKET_R, f"nb_dpe_par_annee_zoom_{colonne}.png")
     plt.clf()
-#type_batiment
+
+def par_annee_construction2 (colonne = 'classe_ges'):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Premier graphique : tranches de 20 ans
+    extremites = [1901 + i*20 for i in range(0, 7)]
+    labels = [
+        'Entre {} et {}'.format(extremites[i], extremites[i+1])
+        for i in range(0, 6)
+    ]
+
+    dpe_reduit = dpe[
+        dpe['annee_construction'].between(1901, 2021)
+    ].copy()
+
+    dpe_reduit["tranche_annee"] = pd.cut(
+        dpe_reduit['annee_construction'],
+        bins=extremites,
+        labels=labels
+    )
+
+    tableau = pd.crosstab(
+        dpe_reduit["tranche_annee"],
+        dpe_reduit[colonne]
+    )
+
+    im1 = axes[0].imshow(
+        tableau,
+        cmap="YlOrRd",
+        aspect="auto"
+    )
+
+    axes[0].set_xticks(range(len(tableau.columns)))
+    axes[0].set_xticklabels(tableau.columns)
+
+    axes[0].set_yticks(range(len(tableau.index)))
+    axes[0].set_yticklabels(tableau.index)
+
+    axes[0].set_title('Nombre de DPE par tranche de construction')
+    axes[0].set_xlabel(colonne)
+    axes[0].set_ylabel('Année de construction')
+
+    fig.colorbar(im1, ax=axes[0], label="Nombre de DPE")
+
+    # Deuxième graphique : année par année
+    dpe_reduit = dpe[
+        dpe['annee_construction'].between(2000, 2021)
+    ]
+
+    tableau = pd.crosstab(
+        dpe_reduit['annee_construction'],
+        dpe_reduit[colonne]
+    )
+
+    im2 = axes[1].imshow(
+        tableau,
+        cmap="YlOrRd",
+        aspect="auto"
+    )
+
+    axes[1].set_xticks(range(len(tableau.columns)))
+    axes[1].set_xticklabels(tableau.columns)
+
+    axes[1].set_yticks(range(len(tableau.index)))
+    axes[1].set_yticklabels(tableau.index)
+
+    axes[1].set_title('Nombre de DPE par année de construction')
+    axes[1].set_xlabel(colonne)
+    axes[1].set_ylabel('Année de construction')
+
+    fig.colorbar(im2, ax=axes[1], label="Nombre de DPE")
+
+    plt.tight_layout()
+
+    plt.savefig(f"nb_dpe_par_annee2_{colonne}.png")
+    upload_to_s3(BUCKET_R, f"nb_dpe_par_annee2_{colonne}.png")
+
+    plt.close(fig)
+
 def barplot_type(colonne = 'classe_ges'):
 # Tracé de l'histogramme
     plt.clf()
@@ -273,7 +355,7 @@ def barplot_type(colonne = 'classe_ges'):
         .rename('proportion')
         .unstack()
         .transpose()
-        .plot.bar(rot=0)
+        .plot.bar(rot=0, color = ['#7f7f7f', '#31a354', '#6baed6'])
         
     )
     #légendes
@@ -328,16 +410,16 @@ if __name__ == "__main__":
     carte('classe_energie')
     barplot('classe_ges')
     barplot('classe_energie')
-    boxplot('emissions_ges', 'classe_ges')
+    #boxplot('emissions_ges', 'classe_ges')
     boxplot_avec_couleurs('emissions_ges', 'classe_ges')
-    boxplot('conso_energie', 'classe_energie')
+    #boxplot('conso_energie', 'classe_energie')
     boxplot_avec_couleurs('conso_energie', 'classe_energie')
-    par_annee_construction('classe_ges')
-    par_annee_construction('classe_energie')
-    par_annee_construction_zoom('classe_ges')
-    par_annee_construction_zoom('classe_energie')
+    par_annee_construction2('classe_ges')
+    par_annee_construction2('classe_energie')
+    #par_annee_construction_zoom('classe_ges')
+    #par_annee_construction_zoom('classe_energie')
     barplot_type('classe_ges')
     barplot_type('classe_energie')
-    tableau('classe_ges')
-    tableau('classe_energie')
+    #tableau('classe_ges')
+    #tableau('classe_energie')
 
