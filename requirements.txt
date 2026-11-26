@@ -9,3 +9,4 @@ s3fs==2026.9.0
 matplotlib==3.11.2
 pyogrio==0.13.0
 shapely==2.2.0
+numpy==2.5.5
