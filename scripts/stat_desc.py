@@ -140,11 +140,12 @@ def barplot(colonne = 'classe_ges'):
         .rename('proportion')
         .reset_index()
         .sort_values(by = colonne)
-        .plot.bar(x = colonne, y = 'proportion', legend = False, color='#6BAED6')
+        .plot.bar(x = colonne, y = 'proportion', legend = False, color='#6baed6')
     )
     #légendes
-    plt.title(f'Proportion de chaque {colonne}')
-    plt.xlabel(f'{colonne}')
+    col_bis = f'{colonne}'.replace("_", " ")
+    plt.title(f'Proportion de chaque {col_bis}')
+    plt.xlabel(col_bis.capitalize())
     plt.ylabel('Proportion')
     plt.savefig(f"bar_plot_{colonne}.png")
     upload_to_s3(BUCKET_R, f"bar_plot_{colonne}.png")
@@ -154,18 +155,20 @@ def boxplot(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.clf()
     dpe.boxplot(column=[colonne], by= by)
     plt.suptitle('')
-    plt.title('Boxplots de {} par {}'.format(colonne, by))
-    plt.xlabel(f'{by}')
-    if colonne == 'classe_ges':
-        plt.ylabel(f'{colonne} en kgéqCO2/m².an')
+    col_bis = f'{colonne}'.replace("_", " ")
+    by_bis = f'{by}'.replace("_", " ")
+    plt.title('Boxplots de {} par {}'.format(col_bis, by_bis))
+    plt.xlabel(by_bis.capitalize())
+    if by == 'classe_ges':
+        plt.ylabel(f'{col_bis.capitalize()} en kgéqCO2/m².an')
     else :
-        plt.ylabel(f'{colonne} en kWhEP/m².an')
+        plt.ylabel(f'{col_bis.capitalize()} en kWhEP/m².an')
     plt.legend()
     plt.savefig(f"boxplot_{by}.png")
     upload_to_s3(BUCKET_R, f"boxplot_{by}.png")
     plt.clf()
 
-#440154', '#443983', '#31688e', '#21918c', '#35b779', '#90d743', '#fde725'
+
 def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.clf()
     ax = dpe.boxplot(column=[colonne], by=by)
@@ -175,29 +178,31 @@ def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
 
     ymin, ymax = plt.ylim()
     if by == 'classe_ges': 
-        plt.axhspan(ymin, 5, color='#4D4D4D', alpha=0.2, label='classe A') # Gris foncé
-        plt.axhspan(6, 10, color='#238B45', alpha=0.2, label='classe B') # Vert foncé
-        plt.axhspan(11, 20, color='#2171B5', alpha=0.2, label='classe C') # Bleu foncé
-        plt.axhspan(21, 35, color='#7F7F7F', alpha=0.2, label='classe D') # Gris moyen
-        plt.axhspan(36, 55, color='#31A354', alpha=0.2, label='classe E') # Vert moyen
-        plt.axhspan(56, 80, color='#6BAED6', alpha=0.2, label='classe F') # Bleu moyen
-        plt.axhspan(81, ymax, color='#BDD7E7', alpha=0.2, label='classe G') # Bleu très clair
+        plt.axhspan(ymin, 5, color='#7f7f7f', alpha=0.2, label='classe A') # Gris
+        plt.axhspan(6, 10, color='#31a354', alpha=0.2, label='classe B') # Vert
+        plt.axhspan(11, 20, color='#6baed6', alpha=0.2, label='classe C') # Bleu
+        plt.axhspan(21, 35, color='#8c6bb1', alpha=0.2, label='classe D') # Violet
+        plt.axhspan(36, 55, color='#e6ab02', alpha=0.2, label='classe E') # Jaune moutarde
+        plt.axhspan(56, 80, color='#e6550d', alpha=0.2, label='classe F') # Orange
+        plt.axhspan(81, ymax, color='#dd6a8c', alpha=0.2, label='classe G') # Rose
     else : 
-        plt.axhspan(ymin, 50, color='#4D4D4D', alpha=0.2, label='classe A') # Gris foncé
-        plt.axhspan(51, 90, color='#238B45', alpha=0.2, label='classe B') # Vert foncé
-        plt.axhspan(91, 150, color='#2171B5', alpha=0.2, label='classe C') # Bleu foncé
-        plt.axhspan(151, 230, color='#7F7F7F', alpha=0.2, label='classe D') # Gris moyen
-        plt.axhspan(231, 330, color='#31A354', alpha=0.2, label='classe E') # Vert moyen
-        plt.axhspan(331, 450, color='#6BAED6', alpha=0.2, label='classe F') # Bleu moyen
-        plt.axhspan(451, ymax, color='#BDD7E7', alpha=0.2, label='classe G') # Bleu très clair
+        plt.axhspan(ymin, 50, color='#7f7f7f', alpha=0.2, label='classe A') # Gris
+        plt.axhspan(51, 90, color='#31a354', alpha=0.2, label='classe B') # Vert
+        plt.axhspan(91, 150, color='#6baed6', alpha=0.2, label='classe C') # Bleu
+        plt.axhspan(151, 230, color='#8c6bb1', alpha=0.2, label='classe D') # Violet
+        plt.axhspan(231, 330, color='#e6ab02', alpha=0.2, label='classe E') # Jaune moutarde
+        plt.axhspan(331, 450, color='#e6550d', alpha=0.2, label='classe F') # Orange
+        plt.axhspan(451, ymax, color='#dd6a8c', alpha=0.2, label='classe G') # Rose
 
     plt.suptitle('')
-    plt.title('Boxplots de {} par {}'.format(colonne, by))
-    plt.xlabel(f'{by}')
-    if colonne == 'classe_ges':
-        plt.ylabel(f'{colonne} en kgéqCO2/m².an')
+    col_bis = f'{colonne}'.replace("_", " ")
+    by_bis = f'{by}'.replace("_", " ")
+    plt.title('Boxplots de {} par {}'.format(col_bis, by_bis))
+    plt.xlabel(by_bis.capitalize())
+    if by == 'classe_ges':
+        plt.ylabel(f'{col_bis.capitalize()} en kgéqCO2/m².an')
     else :
-        plt.ylabel(f'{colonne} en kWhEP/m².an')
+        plt.ylabel(f'{col_bis.capitalize()} en kWhEP/m².an')
     plt.legend()
     plt.savefig(f"boxplot_avec_couleur_{by}.png")
     upload_to_s3(BUCKET_R, f"boxplot_avec_couleur_{by}.png")
@@ -230,7 +235,7 @@ def par_annee_construction(colonne = 'classe_ges'):
     # Ajouter une barre de couleur
     plt.colorbar(label="Nombre de DPE")
     plt.title('Nombre de DPE par année de construction')
-    plt.xlabel(f'{colonne}')
+    plt.xlabel(f'{colonne}'.capitalize().replace('_', ' '))
     plt.ylabel('Année de construction')
     plt.savefig(f"nb_dpe_par_annee_{colonne}.png")
     upload_to_s3(BUCKET_R, f"nb_dpe_par_annee_{colonne}.png")
@@ -259,7 +264,7 @@ def par_annee_construction_zoom(colonne = 'classe_ges'):
     # Ajouter une barre de couleur
     plt.colorbar(label="Nombre de DPE")
     plt.title('Nombre de DPE par année de construction')
-    plt.xlabel(f'{colonne}')
+    plt.xlabel(f'{colonne}'.capitalize().replace('_', ' '))
     plt.ylabel('Année de construction')
     plt.savefig(f"nb_dpe_par_annee_zoom_{colonne}.png")
     upload_to_s3(BUCKET_R, f"nb_dpe_par_annee_zoom_{colonne}.png")
@@ -303,7 +308,7 @@ def par_annee_construction2 (colonne = 'classe_ges'):
     axes[0].set_yticklabels(tableau.index)
 
     axes[0].set_title('Nombre de DPE par tranche de construction')
-    axes[0].set_xlabel(colonne)
+    axes[0].set_xlabel(f'{colonne}'.capitalize().replace('_', ' '))
     axes[0].set_ylabel('Année de construction')
 
     fig.colorbar(im1, ax=axes[0], label="Nombre de DPE")
@@ -359,8 +364,10 @@ def barplot_type(colonne = 'classe_ges'):
         
     )
     #légendes
-    plt.title(f'Proportion de chaque {colonne} par type de bâtiment')
+    col_bis = f'{colonne}'.replace('_', ' ')
+    plt.title(f'Proportion de chaque {col_bis} par type de bâtiment')
     plt.ylabel('Proportion')
+    plt.xlabel(col_bis.capitalize())
     plt.legend()
     plt.savefig(f"bar_plot_type_{colonne}.png")
     upload_to_s3(BUCKET_R, f"bar_plot_type_{colonne}.png")
