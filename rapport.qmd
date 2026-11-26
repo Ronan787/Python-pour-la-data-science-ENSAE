@@ -380,7 +380,7 @@ Les bandes de couleurs représentent les classes théoriques obtenues à partir 
   </iframe>
 </div>
 
-On constate que certains points ont des étiquettes qui ne correspondent pas à leur émission de gaz à effet de serre théorique. On s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les box sont plutôt centrées. 
+On constate que certains points ont des étiquettes qui ne correspondent pas à leur émission de gaz à effet de serre théorique. On s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les boîtes sont plutôt centrées. 
 
 
 ### Etiquettes et année de construction
