@@ -191,7 +191,7 @@ Le fichier source, téléchargé manuellement depuis le site du ministère, est 
 
 ## Données DPE (Ademe)
 
-Dans un but exploratoire et pour pouvoir effectuer le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ci-dessous la distribution des variables de consommation d'énergie et d'émission de GES.
+Dans un but exploratoire et pour préparer le nettoyage des données, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Nous présentons ci-dessous la distribution de la consommation d’énergie primaire, exprimée en kWhEP/m²/an, et celle des émissions de gaz à effet de serre, exprimées en kg CO₂e/m²/an.
 
 ```{python}
 
@@ -367,10 +367,16 @@ Pour chaque logement, la base indique la classe DPE « climat » (de A à G) et 
   </iframe>
 </div>
 
-On constate que certains points ont des étiquettes qui ne correspondent pas à leurs émissions de gaz à effet de serre théoriques. On aurait pu envisager un nettoyage plus poussé en excluant les DPE dont les émissions estimées s’écartent trop de la plage correspondant à la classe renseignée. Il aurait toutefois fallu fixer une marge de tolérance en partie arbitraire. Nous avons donc conservé ces observations. On s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les boîtes sont plutôt centrées.
+On constate que certains points ont des étiquettes qui ne correspondent pas à leurs émissions de gaz à effet de serre théoriques. On aurait pu envisager un nettoyage plus poussé en excluant les DPE dont les émissions estimées s’écartent trop de la plage correspondant à la classe renseignée. Il aurait toutefois fallu fixer une marge de tolérance en partie arbitraire. Nous avons donc conservé ces observations. Par ailleurs, on s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les boîtes sont plutôt centrées.
 
 
 ### Étiquettes DPE selon l’année de construction du bâti
+
+::: {layout-ncol=2}
+![Nombre de DPE par année de construction et par classe GES](https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_classe_ges.png)
+
+![Zoom sur le nombre de DPE par année de construction et par classe GES](https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ges.png)
+:::
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
