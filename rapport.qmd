@@ -401,7 +401,7 @@ src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ge
 
 Quelle que soit l'année, on remarque un faible nombre de passoires énergétiques. Les bâtiments construits avant 2007 ont en majorité des étiquettes C, D et E. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
 
-### 
+### Etiquette et type de bâtiment
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/bar_plot_type_classe_ges.png"
@@ -411,6 +411,11 @@ Quelle que soit l'année, on remarque un faible nombre de passoires énergétiqu
     loading="lazy">
   </iframe>
 </div>
+
+Pour les maisons individuelles, les étiquettes A, B, C, D et E sont plutôt bien réparties (entre 15% et 20%). 
+Pour les bâtiments collectifs à usage principal d'habitation, l'étiquette D est majoritaire (30%) suivie de l'étiquette C (23%).
+Pour les logements, l'étiquette C est majoritaire (30%) suivie de l'étiquette B (20%). 
+Dans les trois cas, les étiquettes F et G, donc les passoires énergétiques sont présentes en faible proportion (<7%).
 
 ## DPE « énergie »
 ### Répartition des étiquettes 
@@ -506,7 +511,7 @@ src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_en
 
 Même constat que pour le DPE "climat" : Quelle que soit l'année, on remarque un faible nombre de passoires énergétiques. Les bâtiments construits avant 2007 ont en majorité des étiquettes C, D et E. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
 
-###
+### Etiquette et type de bâtiment
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
@@ -517,6 +522,10 @@ Même constat que pour le DPE "climat" : Quelle que soit l'année, on remarque u
     loading="lazy">
   </iframe>
 </div>
+
+Pour tout type de bâtiment, l'étiquette D est présente en grande proportion (environ 27%). 
+Pour les bâtiments collectifs à usage principal d'habitation, l'étiquette C est également présente en grande proportion (>30%).
+Les étiquettes F  et G, associées à des passoires énergétiques, sont présentes en faible proportions (< 5% pour l'étiquette G et < 10% pour l'étiquette F). 
 
 # Les écoquartiers face aux DPE
 
