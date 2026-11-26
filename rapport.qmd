@@ -395,7 +395,7 @@ On constate que certains points ont des étiquettes qui ne correspondent pas à 
   </iframe>
 </div>
 
-Peu de DPE ont été réalisés sur des bâtiments construits avant 1941, et ce quelle que soit l'étiquette. Les bâtiments construits entre 1941 et 1961 ont une majorité d'étiquette E. Au contraire, les bâtiments récemment construits, entre 2001 et 20021 ont une majorité d'étiquettes A, B et C. On constate deux points : 
+Peu de DPE ont été réalisés sur des bâtiments construits avant 1941, et ce quelle que soit l'étiquette. Les bâtiments construits entre 1941 et 1961 ont une majorité d'étiquettes E. Au contraire, les bâtiments récemment construits, entre 2001 et 2021 ont une majorité d'étiquettes A, B et C. On constate deux points : 
 1) le DPE est meilleur pour des bâtiments récents,
 2) la majorité des DPE réalisés l'ont été sur des bâtiments construits récemment (après 2001)
 
@@ -412,6 +412,128 @@ src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_ge
 </div>
 
 Quelle que soit l'année, on remarque un faible nombre de passoires énergétiques. Les bâtiments construits avant 2007 ont en majorité des étiquettes C, D et E. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
+
+## DPE « énergie »
+### Répartition des étiquettes 
+<div style="width: 100%; height: 500px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/bar_plot_classe_energie.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+Les étiquettes sont encore inégalement réparties. Les étiquettes F et G, et donc les passoires énergétiques, ainsi que l'étiquette A sont présentes en faibles proportions (< 10% chacune). L'étiquette D est majoritaire avec une proportion proche de 30%. L'étiquette E suit avec une proportion de plus de 20%. Dans la suite, il sera intéressant de regarder si les bâtiments associés à une étiquette E n'ont pas une consommation d'énergie tout juste suffiante pour se voir attribuer une étiquette E plutôt qu'une étiquette F. 
+
+### Répartitions des étiquettes et taux de passoires par département
+Comme pour le DPE "climat", la carte ci-dessous représente pour chaque département de France métropolitaine la répartitions des étiquettes, ainsi que le taux de passoires dans le département. La répartition des étiquettes s'affiche en survolant le département avec la souris.
+
+<div style="width: 100%; height: 500px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/carte_classe_energie.html"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+La carte ci-dessus dénote avec la carte obtenue pour les DPE "climat". Ici, à l'exception des 5 départements que sont Lozère (23% de passoires énergétiques), le Cantal (27%), la Creuse (23%), Nièvre (25%) et les Hautes Alpes (32%), le taux de passoire par département ne dépasse pas 22%. On constate encore une fois que les départements présents à l'ouest et au sud ont un faible taux de passoires (<8%). 
+
+### Lien entre émission de gaz à effet de serre et étiquette 
+
+```{python}
+import duckdb
+import matplotlib.pyplot as plt
+import pandas as pd
+
+dpe = duckdb.sql("""
+    SELECT *
+    FROM read_parquet('s3://mboutbal/diffusion/dpe_clean.parquet')
+""").df()
+
+stat_dpe = (
+    dpe
+    .groupby('classe_energie')
+    ['conso_energie']
+    .describe()
+)
+
+fig, ax = plt.subplots(figsize=(10, 4))
+
+ax.axis('off')  # pour masquer le repère cartésien
+
+table = ax.table(
+    cellText=stat_dpe.values.round(2),
+    colLabels=stat_dpe.columns,
+    rowLabels=stat_dpe.index,
+    loc="center",
+    cellLoc="center",
+    bbox=[0, 0, 1, 1]  # Occupe toute la surface disponible
+)
+
+table.auto_set_font_size(False)
+table.set_fontsize(11)
+
+plt.tight_layout()
+plt.show()
+
+```
+
+<div style="width: 100%; height: 500px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_classe_energie.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+Les bandes de couleurs représentent les classes théoriques obtenues à partir des émissions de gaz à effet de serre théoriques. 
+<div style="width: 100%; height: 500px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/boxplot_avec_couleur_classe_energie.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+Mêmes remarques que dans le cas du DPE "climat" : on constate que certains points ont des étiquettes qui ne correspondent pas à leur émission de gaz à effet de serre théorique. On s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les boîtes sont plutôt centrées.
+Sauf pour la classe A : pour la classe A, la boîte à moustache est concentrée autour de la valeur de 50kWhEP/m².an qui est la valeur permettant de passer de la classe B à la classe A. 
+
+
+### Etiquettes et année de construction
+
+<div style="width: 100%; height: 500px; margin: 20px 0;">
+  <iframe
+    src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_classe_energie.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+Peu de DPE ont été réalisés sur des bâtiments construits avant 1941, et ce quelle que soit l'étiquette. Les bâtiments construits entre 1941 et 1961 ont une majorité d'étiquettes D et E. Au contraire, les bâtiments récemment construits, entre 2001 et 2021 ont une majorité d'étiquettes A et B. On constate que le DPE est meilleur pour des bâtiments construits après les années 2000.
+
+Pour les bâtiments construits entre 2001 et 2021 : 
+
+<div style="width: 100%; height: 500px; margin: 20px 0;">
+  <iframe
+src="https://minio.lab.sspcloud.fr/ron/diffusion/nb_dpe_par_annee_zoom_classe_energie.png"
+    width="100%"
+    height="500px"
+    style="border: 0;"
+    loading="lazy">
+  </iframe>
+</div>
+
+Même constat que pour le DPE "climat" : Quelle que soit l'année, on remarque un faible nombre de passoires énergétiques. Les bâtiments construits avant 2007 ont en majorité des étiquettes C, D et E. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
 
 {{< include ecoquartiers.qmd >}}
 
