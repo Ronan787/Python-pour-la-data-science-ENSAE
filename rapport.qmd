@@ -175,20 +175,20 @@ print("Nombre total de DPE :", nb_dpe)
 
 ## Les EcoQuartiers
 
-Les contours des écoquartiers proviennent du jeu de données ouvert du ministère de la Transition écologique ([ÉcoQuartiers, open data](https://www.ecoquartiers.logement.gouv.fr/document/opendata-les-ecoquartiers/)), publié sous la forme d'un shapefile (export 2021). Chaque ligne décrit le périmètre d'un projet d'écoquartier : son nom, sa commune principale, sa région, son contexte urbain (centre, faubourg, périphérie, hameau ou autre), ses types d'opération (extension maîtrisée, renouvellement de quartier existant, reconversion de friche, quartier prioritaire ou historique) et son appartenance éventuelle à une zone ANRU. La variable principale est le dernier label obtenu : 1 pour un projet, 2 pour un chantier, 3 pour un quartier livré et 4 pour un quartier confirmé. L'année associée est celle de ce dernier label, et non celle de la livraison des logements. Le dictionnaire des champs est fourni par le ministère.
+Les périmètres géographiques des écoquartiers sont issus du jeu de données publié par le ministère de la Transition écologique, au format Shapefile([ÉcoQuartiers, open data](https://www.ecoquartiers.logement.gouv.fr/document/opendata-les-ecoquartiers/)). Outre les contours géographiques, cette base renseigne le nom des opérations, leur commune de rattachement, leur contexte urbain (centre, faubourg, périphérie, hameau ou autre), la nature des opérations d’aménagement (notamment extension urbaine ou renouvellement urbain) ainsi que leur éventuelle appartenance à un périmètre d’intervention de l’ANRU. Les projets recoivent graduellement des labels. La variable principale est le dernier label obtenu : le label 1 ("en projet") est obtenu lors de l'entrée dans la phase de projet, le label 2 ("en chantier") au début du chantier, le label 3 ("livré") à la fin des travaux, et le label 4 ("confirmé") après une expertise trois après. Nous disposons de l'année d'obtention du dernier label.
 
-Le fichier se télécharge à la main depuis le site du ministère. Nous l'avons déposé une fois pour toutes, sous la forme d'un zip, dans le dossier `diffusion` d'un espace S3, et le script **scripts/data_extraction_ecoquartiers.py** le copie, le décompresse et le lit dans un tableau géographique (GeoPandas) en vérifiant sa structure : colonnes attendues, identifiant unique, géométries de type polygone et projection WGS 84. Le format DBF des shapefiles limite chaque champ de texte à 254 octets. Les textes plus longs, surtout la description du projet, sont coupés, parfois au milieu d'une lettre accentuée, ce qui fait échouer la lecture habituelle. Le script lit donc les octets bruts et les décode lui-même (21 textes concernés). La description reste tronquée, nous ne l'utilisons pas.
+Le fichier source, téléchargé manuellement depuis le site du ministère, est stocké sous forme d’archive ZIP dans le dossier diffusion de notre espace S3. Le script **scripts/data_extraction_ecoquartiers.py** le copie, le décompresse et le lit dans un tableau géographique (GeoPandas) en vérifiant sa structure : colonnes attendues, identifiant unique, géométries de type polygone et projection WGS 84. Le format DBF des shapefiles limite chaque champ de texte à 254 octets. Les textes plus longs, surtout la description du projet, sont coupés, parfois au milieu d'une lettre accentuée, ce qui fait échouer la lecture habituelle. Le script lit donc les octets bruts et les décode lui-même (21 textes concernés). La description reste tronquée, nous ne l'utilisons pas.
  
 ## Autres données
 
-Source des contours communaux — [Contours administratifs, millésime 2021](https://www.data.gouv.fr/datasets/contours-administratifs), [GeoJSON des communes à 1 000 m](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson).
+- Contours géographiques des communes : jeu de données des contours administratifs, millésime 2021, au format GeoJSON, avec une simplification géométrique à 1 000 mètres. [Source des données](https://www.data.gouv.fr/datasets/contours-administratifs) — [Fichier GeoJSON](https://etalab-datasets.geo.data.gouv.fr/contours-administratifs/2021/geojson/communes-1000m.geojson).
 
-Source du nombre de logements par commune — Insee, recensement de la population 2021, données diffusées selon la géographie au 1er janvier 2024. [Logement en 2021 — Base des principaux indicateurs](https://www.insee.fr/fr/statistiques/8202349?sommaire=8202874).
+- Nombre de logements par commune : données issues du recensement de la population de 2021 de l’Insee, diffusées selon la géographie administrative au 1er janvier 2024. [Logement en 2021 — Base des principaux indicateurs](https://www.insee.fr/fr/statistiques/8202349?sommaire=8202874).
 
 
 # Nettoyage
 
-## Données DPE
+## Données DPE (Ademe)
 
 Dans un but exploratoire et pour pouvoir effectuer le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ci-dessous la distribution des variables de consommation d'énergie et d'émission de GES.
 
