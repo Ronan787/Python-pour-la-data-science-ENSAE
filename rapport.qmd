@@ -25,6 +25,14 @@ link-citations: true
 %pip install -r requirements.txt
 ```
 
+```{python}
+#| echo: false
+import duckdb
+import folium
+import geopandas as gpd
+import pandas as pd
+```
+
 # Introduction
 
 ## Contexte et problématique
@@ -54,11 +62,6 @@ L'unité d'observation est le diagnostic, et non le logement : un même logement
 Pour évaluer la couverture géographique de la base brute (non nettoyée), nous rapportons le nombre de DPE au nombre de logements recensés par l’Insee en 2021 dans chaque commune. La carte ci-dessous représente le nombre de DPE pour 100 logements.
 
 ```{python}
-import duckdb
-import folium
-import geopandas as gpd
-import pandas as pd
-
 # Compter les DPE par commune dans la base non nettoyée
 dpe_par_commune = duckdb.sql("""
     SELECT code_insee_commune_actualise AS cog, COUNT(numero_dpe) AS nb_dpe
@@ -154,13 +157,11 @@ La carte montre une couverture très hétérogène entre les communes. Dans un n
 
 ## Les Diagnostiques de Performance Energétiques (DPE)
 
-Les données proviennent du jeu de données DPE Logements (avant juillet 2021) de l’ADEME, qui rassemble les DPE réalisés avant l’entrée en vigueur de la réforme du le 1er juillet 2021. Face aux difficultés techniques rencontrées lors de l’exploitation du fichier au format SQL, nous avons privilégié une extraction via l’interface de programmation applicative (API)([Source et documentation de l’API](https://data.ademe.fr/datasets/dpe-france/api-doc)).
+Les données proviennent du jeu de données DPE Logements (avant juillet 2021) de l’ADEME, qui rassemble les DPE réalisés avant l’entrée en vigueur de la réforme du le 1er juillet 2021. Face aux difficultés techniques rencontrées lors de l’exploitation du fichier au format SQL, nous avons privilégié une extraction via l’interface de programmation applicative (API) ([Source et documentation de l’API](https://data.ademe.fr/datasets/dpe-france/api-doc)).
 
 À partir du dictionnaire des données de l’ADEME, nous avons sélectionné les variables pertinentes pour notre analyse et défini leur type après une première exploration des données. L’extraction via l’API est automatisée par le script `scripts/data_extraction_ademe.py`. Les données sont enregistrées au format Parquet, qui permet de réduire leur volume de stockage et de lire uniquement les colonnes nécessaires à l’analyse. À l’aide de DuckDB, permettant d’interroger directement les fichiers Parquet sans les charger intégralement en mémoire, nous contrôlons l’exhaustivité de l’extraction en comparant le nombre de lignes collectées au total annoncé par l’API, ainsi que l’absence de valeurs manquantes et de doublons parmi les identifiants des DPE. Le fichier ainsi contrôlé est stocké sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet), afin de travailler sur une version commune des données sans réitérer l’extraction, dont la durée est estimée entre deux et trois heures. 
 
 ```{python}
-import duckdb
-
 path_dpe = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
 
 # Nombre total d'observations
@@ -193,7 +194,6 @@ Le fichier source, téléchargé manuellement depuis le site du ministère, est 
 Dans un but exploratoire et pour pouvoir effectuer le nettoyage, nous avons d’abord examiné les valeurs manquantes et la distribution des variables. Notamment, on reporte ci-dessous la distribution des variables de consommation d'énergie et d'émission de GES.
 
 ```{python}
-import duckdb
 
 duckdb.sql("""
     SELECT
@@ -219,10 +219,12 @@ Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les condition
 ```{python}
 #| eval: false
 #| echo: true
+#| 
 # Ce code est un exemple de code qui permettrait d'appeler les fonctions directement
 # à partir de nos scripts. Cependant, pour des raisons de rapidité, il est seulement
 # donnée à titre d'exemple. Seules les deux cellules suivantes seront exécutées en appelant
 # directement les fichiers sauvegardés
+
 from scripts.data_cleaning_ademe import bilan_nettoyage, clean_dpe
 
 chemin_parquet_brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
@@ -271,8 +273,6 @@ Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` lance le net
 Pour chaque filtre de nettoyage, le tableau suivant indique combien de DPE seraient retirés si ce filtre était appliqué seul. Un même DPE peut donc être compté dans plusieurs lignes. Les deux dernières lignes portent uniquement sur les DPE conservés et indiquent, séparément, combien ont vu leur consommation d’énergie ou leurs émissions de GES ramenées au 99ᵉ percentile.
 
 ```{python}
-import duckdb
-
 chemin_parquet_nettoye = "s3://mboutbal/diffusion/dpe_clean.parquet"
 dpe_nettoye = duckdb.read_parquet(chemin_parquet_nettoye)
 
@@ -280,10 +280,8 @@ print("Nombre de DPE après nettoyage :", dpe_nettoye.aggregate("COUNT(*)").fetc
 ```
 
 ```{python}
-import pandas as pd
-
 chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.csv"
-pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
+pd.read_csv(chemin_bilan_nettoyage).style.format(precision=0).hide(axis="index")
 ```
 
 ## Données écoquartiers (ministère de la Transition écologique)
@@ -304,12 +302,10 @@ Le script `scripts/croisement_dpe_ecoquartiers.py` rattache chaque DPE à un éc
 
 # Statistiques descriptives à l'échelle nationale 
 
-Les statistiques descriptives à l'échelle nationales contiennent deux volets : le premier concerne l'impact en termes d’émissions de gaz à effet de serre (DPE « climat ») et le second, la consommation d’énergie (DPE « énergie ») du bâtiment. 
-Dans les deux volets, les mêmes cartes et graphiques sont réalisés. 
-Le code qui sert à générer les cartes et les graphiques met du temps à tourner. Pour que le quarto ne tarde pas à s'ouvrir, les cartes et les graphiques ont été enregistrés en amont sur le bucket. Ils sont ensuite ouverts directement depuis le bucket, ce qui évite de prendre du temps à les générer.
+Les statistiques descriptives à l’échelle nationale contiennent deux volets : le premier concerne l’impact en termes d’émissions de gaz à effet de serre (DPE « climat ») et le second, la consommation d’énergie (DPE « énergie ») du bâtiment. Dans les deux volets, les mêmes cartes et graphiques sont réalisés. Le code qui sert à générer les cartes et les graphiques met du temps à tourner. Pour que le Quarto ne tarde pas à s’ouvrir, les cartes et les graphiques ont été enregistrés en amont sur le bucket. Ils sont ensuite ouverts directement depuis le bucket, ce qui évite de prendre du temps à les générer.
 
 ## DPE « climat »
-### Répartition des étiquettes 
+### Répartition des DPE par étiquette (de A-G)
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
     src="https://minio.lab.sspcloud.fr/ron/diffusion/bar_plot_classe_ges.png"
@@ -320,10 +316,10 @@ Le code qui sert à générer les cartes et les graphiques met du temps à tourn
   </iframe>
 </div>
 
-Les étiquettes sont inégalement réparties. Les étiquettes F et G, et donc les passoires énergétiques, sont présentes en faibles proportions (< 8%). L'étiquette C est majoritaire avec une proportion d'un quart. Il paraît logique que les étiquettes DPE renvoyant à de faibles émissions de GES soient majoritaires. En effet, on peut s'attendre à ce que les bâtiments neufs, pour lesquels la réalisation d'un DPE est obligatoire, aient une faible émissions de GES, puisqu'ils ont été construits avec connaissance de cet enjeux. De plus, nous verrons par la suite que les bâtiments neufs représentent la majorité des DPE recueillis. 
+Les étiquettes sont inégalement réparties. Les étiquettes F et G, qui définissent les passoires énergétiques, sont présentes en faibles proportions (< 8 %). L’étiquette C est la plus fréquente, avec une proportion d’un quart. Il paraît logique que les étiquettes DPE renvoyant à de faibles émissions de GES soient majoritaires. En effet, on peut s’attendre à ce que les bâtiments neufs, pour lesquels la réalisation d’un DPE est obligatoire, aient de faibles émissions de GES, puisqu’ils ont été construits en tenant compte de cet enjeu. De plus, nous verrons par la suite que les bâtiments neufs représentent la majorité des DPE recueillis.
 
 ### Répartitions des étiquettes et taux de passoires par département
-La carte ci-dessous représente pour chaque département de France métropolitaine la répartitions des étiquettes, ainsi que le taux de passoires dans le département. La répartition des étiquettes s'affiche en survolant le département avec la souris.
+La carte ci-dessous représente pour chaque département de France métropolitaine la répartition des étiquettes, ainsi que le taux de passoires dans le département. La répartition des étiquettes s'affiche en survolant le département avec la souris.
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
@@ -335,7 +331,7 @@ La carte ci-dessous représente pour chaque département de France métropolitai
   </iframe>
 </div>
 
-Nous constatons que les départements présents sur le littoral au sud ont un faible taux de passoires énergétiques (en dessous de 5%). Au contraire, le centre de la France et le nord-est présentent un fort taux de passoires, supérieur à 16%, voir à 19% dans certains départements. Le reste du terrtoire a un taux de passoire compris entre 5% et 16%. La carte laisse à penser que le climat impacte le DPE des bâtiments. 
+Nous constatons que les départements présents sur le littoral au sud et au sud-ouest de la France ont un faible taux de passoires énergétiques (en dessous de 5%). Au contraire, le centre et le nord-est de la France présentent un fort taux de passoires énergétiques, supérieur à 16%, voir à 19% dans certains départements. Le reste du terrtoire a un taux de passoire compris entre 5% et 16%. La carte laisse à penser que le climat impacte le DPE des bâtiments. 
 
 ### Lien entre émission de gaz à effet de serre et étiquette 
 
