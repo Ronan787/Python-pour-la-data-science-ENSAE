@@ -39,7 +39,7 @@ L'exploitation des données DPE appelle toutefois plusieurs précautions méthod
 
 ## Objectif de ce projet
 
-Notre projet propose une première exploration empirique de cette question à partir des données DPE de l'ADEME (Agence de la transition écologique) et des données du Ministère de la transition écologique sur les écoquartiers. Nous commencerons par la collecte, le nettoyage et l'analyse descriptive des données à l'échelle nationale, afin de caractériser le parc résidentiel et ses disparités énergétiques. Nous réaliserons ensuite un zoom sur les écoquartiers, en comparant leurs performances à celles des territoires environnants. 
+Notre projet propose une première exploration empirique de cette question à partir des données DPE de l'ADEME (Agence de la transition écologique) et des données du ministère de la Transition écologique sur les écoquartiers. Nous commencerons par la collecte, le nettoyage et l'analyse descriptive des données à l'échelle nationale, afin de caractériser le parc résidentiel et ses disparités énergétiques. Nous réaliserons ensuite un zoom sur les écoquartiers, en comparant leurs performances à celles des territoires environnants. 
 
 Sans chercher à identifier un effet causal de la labellisation, cette analyse vise à déterminer si les données mettent en évidence de meilleures performances énergétiques dans les écoquartiers, ou si leur exemplarité affichée doit être nuancée.
 
@@ -156,7 +156,7 @@ La carte montre une couverture très hétérogène entre les communes. Dans un n
 
 Les données proviennent du jeu de données DPE Logements (avant juillet 2021) de l’ADEME, qui rassemble les DPE réalisés avant l’entrée en vigueur de la réforme du le 1er juillet 2021. Face aux difficultés techniques rencontrées lors de l’exploitation du fichier au format SQL, nous avons privilégié une extraction via l’interface de programmation applicative (API)([Source et documentation de l’API](https://data.ademe.fr/datasets/dpe-france/api-doc)).
 
-À partir du dictionnaire des données de l’ADEME, nous avons sélectionné les variables pertinentes pour notre analyse et défini leur type après une première exploration des données. L’extraction via l’API est automatisée par le script scripts/data_extraction_ademe.py. Les données sont enregistrées au format Parquet, qui permet de réduire leur volume de stockage et de lire uniquement les colonnes nécessaires à l’analyse. À l’aide de DuckDB, permettant d’interroger directement les fichiers Parquet sans les charger intégralement en mémoire, nous contrôlons l’exhaustivité de l’extraction en comparant le nombre de lignes collectées au total annoncé par l’API, ainsi que l’absence de valeurs manquantes et de doublons parmi les identifiants des DPE. Le fichier ainsi contrôlé est stocké sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet), afin de travailler sur une version commune des données sans réitérer l’extraction, dont la durée est estimée entre deux et trois heures. 
+À partir du dictionnaire des données de l’ADEME, nous avons sélectionné les variables pertinentes pour notre analyse et défini leur type après une première exploration des données. L’extraction via l’API est automatisée par le script `scripts/data_extraction_ademe.py`. Les données sont enregistrées au format Parquet, qui permet de réduire leur volume de stockage et de lire uniquement les colonnes nécessaires à l’analyse. À l’aide de DuckDB, permettant d’interroger directement les fichiers Parquet sans les charger intégralement en mémoire, nous contrôlons l’exhaustivité de l’extraction en comparant le nombre de lignes collectées au total annoncé par l’API, ainsi que l’absence de valeurs manquantes et de doublons parmi les identifiants des DPE. Le fichier ainsi contrôlé est stocké sur S3 (s3://mboutbal/diffusion/dpe_date_22_11.parquet), afin de travailler sur une version commune des données sans réitérer l’extraction, dont la durée est estimée entre deux et trois heures. 
 
 ```{python}
 import duckdb
@@ -175,9 +175,9 @@ print("Nombre total de DPE :", nb_dpe)
 
 ## Les EcoQuartiers
 
-Les périmètres géographiques des écoquartiers sont issus du jeu de données publié par le ministère de la Transition écologique, au format Shapefile([ÉcoQuartiers, open data](https://www.ecoquartiers.logement.gouv.fr/document/opendata-les-ecoquartiers/)). Outre les contours géographiques, cette base renseigne le nom des opérations, leur commune de rattachement, leur contexte urbain (centre, faubourg, périphérie, hameau ou autre), la nature des opérations d’aménagement (notamment extension urbaine ou renouvellement urbain) ainsi que leur éventuelle appartenance à un périmètre d’intervention de l’ANRU. Les projets recoivent graduellement des labels. La variable principale est le dernier label obtenu : le label 1 ("en projet") est obtenu lors de l'entrée dans la phase de projet, le label 2 ("en chantier") au début du chantier, le label 3 ("livré") à la fin des travaux, et le label 4 ("confirmé") après une expertise trois après. Nous disposons de l'année d'obtention du dernier label.
+Les périmètres géographiques des écoquartiers sont issus du jeu de données publié par le ministère de la Transition écologique, au format Shapefile ([ÉcoQuartiers, open data](https://www.ecoquartiers.logement.gouv.fr/document/opendata-les-ecoquartiers/)). Outre les contours géographiques, cette base renseigne le nom des opérations, leur commune de rattachement, leur contexte urbain (centre, faubourg, périphérie, hameau ou autre), la nature des opérations d’aménagement (notamment extension urbaine ou renouvellement urbain) ainsi que leur éventuelle appartenance à un périmètre d’intervention de l’ANRU. Les projets recoivent graduellement des labels. La variable principale est le dernier label obtenu : le label 1 ("en projet") est obtenu lors de l'entrée dans la phase de projet, le label 2 ("en chantier") au début du chantier, le label 3 ("livré") à la fin des travaux, et le label 4 ("confirmé") après une expertise trois après. Nous disposons de l'année d'obtention du dernier label.
 
-Le fichier source, téléchargé manuellement depuis le site du ministère, est stocké sous forme d’archive ZIP dans le dossier diffusion de notre espace S3. Le script **scripts/data_extraction_ecoquartiers.py** le copie, le décompresse et le lit dans un tableau géographique (GeoPandas) en vérifiant sa structure : colonnes attendues, identifiant unique, géométries de type polygone et projection WGS 84. Le format DBF des shapefiles limite chaque champ de texte à 254 octets. Les textes plus longs, surtout la description du projet, sont coupés, parfois au milieu d'une lettre accentuée, ce qui fait échouer la lecture habituelle. Le script lit donc les octets bruts et les décode lui-même (21 textes concernés). La description reste tronquée, nous ne l'utilisons pas.
+Le fichier source, téléchargé manuellement depuis le site du ministère, est stocké sous forme d’archive ZIP dans le dossier diffusion de notre espace S3. Le script `scripts/data_extraction_ecoquartiers.py` le copie, le décompresse et le lit dans un tableau géographique (GeoPandas) en vérifiant sa structure : colonnes attendues, identifiant unique, géométries de type polygone et projection WGS 84. Le format DBF des shapefiles limite chaque champ de texte à 254 octets. Les textes plus longs, surtout la description du projet, sont coupés, parfois au milieu d'une lettre accentuée, ce qui fait échouer la lecture habituelle. Le script lit donc les octets bruts et les décode lui-même (21 textes concernés). La description reste tronquée, nous ne l'utilisons pas.
  
 ## Autres données
 
@@ -198,38 +198,38 @@ import duckdb
 duckdb.sql("""
     SELECT
         variable AS "Variable",
-        ROUND(MIN(valeur), 2) AS "Minimum",
-        ROUND(approx_quantile(valeur, 0.01), 2) AS "P1",
-        ROUND(approx_quantile(valeur, 0.25), 2) AS "Q1",
-        ROUND(approx_quantile(valeur, 0.50), 2) AS "Médiane",
-        ROUND(AVG(valeur), 2) AS "Moyenne",
-        ROUND(approx_quantile(valeur, 0.75), 2) AS "Q3",
-        ROUND(approx_quantile(valeur, 0.99), 2) AS "P99",
-        ROUND(MAX(valeur), 2) AS "Maximum"
+        MIN(valeur) AS "Minimum",
+        approx_quantile(valeur, 0.01) AS "P1",
+        approx_quantile(valeur, 0.25) AS "Q1",
+        approx_quantile(valeur, 0.50) AS "Médiane",
+        AVG(valeur) AS "Moyenne",
+        approx_quantile(valeur, 0.75) AS "Q3",
+        approx_quantile(valeur, 0.99) AS "P99",
+        MAX(valeur) AS "Maximum"
     FROM read_parquet('s3://mboutbal/diffusion/dpe_date_22_11.parquet')
     UNPIVOT (valeur FOR variable IN (consommation_energie, estimation_ges))
     GROUP BY variable
     ORDER BY variable
-""").df().style.hide(axis="index")
+""").df().style.format(precision=1).hide(axis="index")
 
 ```
 
-Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les conditions définies dans *regles_conservation* du script ci-dessous. Les coordonnées sont nécessaires pour localiser les logements dans les écoquartiers. Nous conservons les diagnostics dont les classes énergie et GES vont de A à G et dont les consommations et émissions sont finies et non négatives. Nous excluons les DPE d’outre-mer et ceux du modèle « Centre commercial ». Les maximums observés étant très élevés, nous plafonnons la consommation et les émissions à leur 99ᵉ percentile pour limiter leur influence sur les moyennes (windsorisation). 
+Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les conditions définies dans `regles_conservation` du script ci-dessous. La présence de coordonnées géographiques étant indispensable pour identifier les logements situés dans les ÉcoQuartiers, nous excluons les diagnostics non géolocalisés, bien qu’ils représentent une part importante des observations initiales. Nous conservons les diagnostics dont les classes énergie et GES sont comprises entre A et G et dont les valeurs de consommation énergétique et d’émissions de GES sont finies et non négatives. Nous excluons également les DPE réalisés en outre-mer et ceux relevant du modèle « Centre commercial ». Enfin, compte tenu des valeurs maximales particulièrement élevées, nous plafonnons chacune des deux variables quantitatives à son 99ᵉ percentile (winsorisation supérieure), afin de limiter l’influence des valeurs extrêmes sur les moyennes sans réduire la taille de l’échantillon. 
 
 ```{python}
 #| eval: false
 #| echo: true
 # Ce code est un exemple de code qui permettrait d'appeler les fonctions directement
 # à partir de nos scripts. Cependant, pour des raisons de rapidité, il est seulement
-# donnée à titre d'exemple seule les deux cellules suivantes sont exécutées en appelant
-# les fichiers sauvegardés
+# donnée à titre d'exemple. Seules les deux cellules suivantes seront exécutées en appelant
+# directement les fichiers sauvegardés
 from scripts.data_cleaning_ademe import bilan_nettoyage, clean_dpe
 
 chemin_parquet_brut = "s3://mboutbal/diffusion/dpe_date_22_11.parquet"
 fichier_nettoye = "dpe_clean.parquet"
 
 # Chaque condition indique quels DPE conserver
-regles_conservation = {
+requete_nettoyage_sql = {
     "Coordonnées manquantes": """
         latitude IS NOT NULL AND longitude IS NOT NULL
         AND NOT isnan(latitude) AND NOT isnan(longitude)
@@ -252,21 +252,23 @@ regles_conservation = {
         "isfinite(emissions_ges) AND emissions_ges >= 0",
 }
 
-# Enregistrement des DPE nettoyés avec leurs indicateurs de winsorisation
-dpe_nettoye = clean_dpe(chemin_parquet_brut, regles_conservation)
+# Enregistrer les DPE nettoyés avec leurs indicateurs de winsorisation.
+dpe_nettoye = clean_dpe(chemin_parquet_brut, requete_nettoyage_sql)
 dpe_nettoye.write_parquet(fichier_nettoye)
 
-# Tableaux qui recense le nombre de DPE concernés par le nettoyage ainsi
-# que le nombre de DPE dont la consommation a été winsorisée.
+# Afficher les effectifs par motif d’exclusion et par indicateur de winsorisation.
 tableau_diagnostic = bilan_nettoyage(
-    chemin_parquet_brut, regles_conservation, fichier_nettoye
+    chemin_parquet_brut,
+    requete_nettoyage_sql,
+    fichier_nettoye,
 )
+
 tableau_diagnostic
 ```
 
-Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` lance le nettoyage, calcule le diagnostic et enregistre les deux fichiers sur S3 dans le bucket renseigné. Pour accélérer le rendu, Quarto lit directement ces fichiers à partir de leur sauvegarde S3. 
+Depuis la racine du projet, `python scripts/data_cleaning_ademe.py` lance le nettoyage, calcule le diagnostic et enregistre les deux fichiers dans l'espace de stockage S3 dans le bucket renseigné. Pour accélérer le rendu, Quarto lit directement ces fichiers à partir de leur sauvegarde S3. 
 
-Pour chaque filtre de nettoyage, le tableau indique combien de DPE seraient retirés si ce filtre était appliqué seul. Un même DPE peut donc être compté dans plusieurs lignes. Les deux dernières lignes portent uniquement sur les DPE conservés et indiquent, séparément, combien ont vu leur consommation d’énergie ou leurs émissions de GES ramenées au 99ᵉ percentile.
+Pour chaque filtre de nettoyage, le tableau suivant indique combien de DPE seraient retirés si ce filtre était appliqué seul. Un même DPE peut donc être compté dans plusieurs lignes. Les deux dernières lignes portent uniquement sur les DPE conservés et indiquent, séparément, combien ont vu leur consommation d’énergie ou leurs émissions de GES ramenées au 99ᵉ percentile.
 
 ```{python}
 import duckdb
@@ -283,9 +285,10 @@ import pandas as pd
 chemin_bilan_nettoyage = "s3://mboutbal/diffusion/tableau_diagnostic_nettoyage.csv"
 pd.read_csv(chemin_bilan_nettoyage).style.hide(axis="index")
 ```
-## Données écoquartiers
 
-Le script **scripts/data_cleaning_ecoquartiers.py** nettoie les 486 périmètres extraits :
+## Données écoquartiers (ministère de la Transition écologique)
+
+Le script `scripts/data_cleaning_ecoquartiers.py` nettoie les 486 périmètres extraits :
 
 - Les 19 écoquartiers d'outre-mer sont retirés, car le champ de l'étude est la France métropolitaine. Il en reste 467.
 - L'année du dernier label vaut 0 pour 5 écoquartiers : nous la remplaçons par une valeur manquante.
@@ -295,9 +298,9 @@ Le script **scripts/data_cleaning_ecoquartiers.py** nettoie les 486 périmètres
 
 Nous conservons tous les écoquartiers, quel que soit leur label, et gardons la possibilité de les comparer entre eux.
 
-## Croisement des DPE et des écoquartiers
+## Jointure spatiale : DPE et écoquartiers
 
-Le script **scripts/croisement_dpe_ecoquartiers.py** rattache chaque DPE à un écoquartier lorsque le point défini par sa latitude et sa longitude, projeté en Lambert-93, se situe à l'intérieur du périmètre. Les 7,3 millions de DPE nettoyés sont lus par paquets de 500 000 lignes pour limiter la mémoire utilisée. Au total, 91 393 DPE se trouvent dans un écoquartier, répartis sur 350 des 467 écoquartiers. Les 117 autres ne contiennent aucun DPE. Les 2 372 DPE situés dans deux écoquartiers qui se chevauchent ne sont comptés qu'une fois. Nous n'appliquons pas de filtre sur la qualité du géocodage des adresses : le score est conservé dans le fichier résultat.
+Le script `scripts/croisement_dpe_ecoquartiers.py` rattache chaque DPE à un écoquartier lorsque le point défini par sa latitude et sa longitude, projeté en Lambert-93, se situe à l'intérieur du périmètre. Les 7,3 millions de DPE nettoyés sont lus par paquets de 500 000 lignes pour limiter la mémoire utilisée. Au total, 91 393 DPE se trouvent dans un écoquartier, répartis sur 350 des 467 écoquartiers. Les 117 autres ne contiennent aucun DPE. Les 2 372 DPE situés dans deux écoquartiers qui se chevauchent ne sont comptés qu'une fois. Nous n'appliquons pas de filtre sur la qualité du géocodage des adresses : le score est conservé dans le fichier résultat.
 
 # Statistiques descriptives à l'échelle nationale 
 
