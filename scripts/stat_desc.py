@@ -260,6 +260,68 @@ def par_annee_construction_zoom(colonne = 'classe_ges'):
     plt.savefig(f"nb_dpe_par_annee_zoom_{colonne}.png")
     upload_to_s3(BUCKET_R, f"nb_dpe_par_annee_zoom_{colonne}.png")
     plt.clf()
+#type_batiment
+def barplot_type(colonne = 'classe_ges'):
+# Tracé de l'histogramme
+    plt.clf()
+    (
+        dpe
+        .sort_values(by = colonne)
+        .groupby('type_batiment')
+        [colonne]
+        .value_counts(normalize = True)
+        .rename('proportion')
+        .unstack()
+        .transpose()
+        .plot.bar(rot=0)
+        
+    )
+    #légendes
+    plt.title(f'Proportion de chaque {colonne} par type de bâtiment')
+    plt.ylabel('Proportion')
+    plt.legend()
+    plt.savefig(f"bar_plot_type_{colonne}.png")
+    upload_to_s3(BUCKET_R, f"bar_plot_type_{colonne}.png")
+    plt.clf()
+
+def tableau(colonne):
+    if colonne == 'classe_ges' :
+        plt.clf()
+        stat_dpe = (
+            dpe
+            .groupby('classe_ges')
+            ['emissions_ges']
+            .describe()
+        )
+    else : 
+        plt.clf()
+        stat_dpe = (
+            dpe
+            .groupby('classe_energie')
+            ['conso_energie']
+            .describe()
+        )
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+
+    ax.axis('off')  # pour masquer le repère cartésien
+
+    table = ax.table(
+        cellText=stat_dpe.values.round(2),
+        colLabels=stat_dpe.columns,
+        rowLabels=stat_dpe.index,
+        loc="center",
+        cellLoc="center",
+        bbox=[0, 0, 1, 1]  # Occupe toute la surface disponible
+    )
+
+    table.auto_set_font_size(False)
+    table.set_fontsize(11)
+
+    plt.tight_layout()
+    plt.savefig(f"tableau_{colonne}.png")
+    upload_to_s3(BUCKET_R, f"tableau_{colonne}.png")
+    plt.clf()
 
 if __name__ == "__main__":
     carte('classe_ges')
@@ -274,4 +336,8 @@ if __name__ == "__main__":
     par_annee_construction('classe_energie')
     par_annee_construction_zoom('classe_ges')
     par_annee_construction_zoom('classe_energie')
+    barplot_type('classe_ges')
+    barplot_type('classe_energie')
+    tableau('classe_ges')
+    tableau('classe_energie')
 
