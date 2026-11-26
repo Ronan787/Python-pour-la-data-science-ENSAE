@@ -355,7 +355,7 @@ def barplot_type(colonne = 'classe_ges'):
         .rename('proportion')
         .unstack()
         .transpose()
-        .plot.bar(rot=0)
+        .plot.bar(rot=0, color = ['#7f7f7f', '#31a354', '#6baed6'])
         
     )
     #légendes
