@@ -24,13 +24,15 @@ REMARQUES
     Les logements neufs sont surreprésentés dans la base DPE, et encore plus
     dans les écoquartiers.
     Le type « Bâtiment collectif à usage principal d'habitation » est un DPE
-    établi pour l'immeuble entier (affiché « Immeuble entier » sur la figure) ;
-    les appartements sont dans le type « Logement ».
+    établi pour l'immeuble entier ; les appartements sont dans le type
+    « Logement », affiché « Appartement » sur la figure comme dans stat_desc.py.
 
 UTILISATION
     python scripts/croisement_dpe_ecoquartiers.py   # une fois
     python scripts/structure_logement_ecoquartiers.py
 """
+
+import textwrap
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -46,6 +48,8 @@ from utils_ecoquartiers import (
 
 PERIODES = ["Avant 1946", "1946-1970", "1971-1990", "1991-2005",
             "2006-2012", "2013-2021", "Inconnue"]
+# Libellé affiché sur la figure (même libellé que stat_desc.py)
+LIBELLES = {"Logement": "Appartement"}
 TITRES = {"modele_dpe": "Modèle de DPE", "type_batiment": "Type de bâtiment",
           "periode": "Période de construction"}
 FICHIERS = ["structure_logement.png", "structure_logement.csv",
@@ -112,8 +116,8 @@ def graphique_structure(parts: pd.DataFrame, chemin) -> None:
             croise = croise.reindex([p for p in PERIODES if p in croise.index])
         else:  # modalités les plus fréquentes en premier
             croise = croise.loc[croise.sum(axis=1).sort_values(ascending=False).index]
-        croise.index = [m.replace("Bâtiment collectif à usage principal d'habitation",
-                                  "Immeuble entier") for m in croise.index]
+        # libellés lisibles : « Logement » devient « Appartement », textes longs coupés
+        croise.index = [textwrap.fill(LIBELLES.get(m, m), 24) for m in croise.index]
         barres_groupees(ax, croise)
         ax.tick_params(axis="x", labelrotation=30, labelsize=8)
         for etiquette in ax.get_xticklabels():
