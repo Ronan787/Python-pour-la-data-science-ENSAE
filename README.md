@@ -24,6 +24,7 @@ Le code est regroupé dans le dossier **scripts**. Il n'est pas nécessaire de l
 
 Description des scripts et indications concernant les paramètres de bucket (seulement pour l'enregistrement) : 
 
+- `pip install -r requirements.txt`
 - data_extraction_ademe.py : contient le code permettant de récupérer les données DPE depuis l'API de l'Ademe. Les données ainsi récupérées sont stockées dans l’espace de stockage du SSPCloud (2 à 3 heures). Pour l'enregistrement : *Bucket à paramétrer : `S3_BUCKET`.*
 - data_cleaning_ademe.py : contient le code permettant de nettoyer et de formater les données DPE extraites, appelées depuis l’espace de stockage du SSPCloud. Pour l'enregistrement : *Bucket à paramétrer : `S3_BUCKET`.*
 - stat_desc.py : contient le code générant cartes et graphiques en vue d'obtenir des statistiques descriptives à l'échelle nationale. *Bucket à paramétrer : `BUCKET_R`, qui sert aussi à lire le shapefile des départements : le copier dans le même dossier de son bucket (`diffusion/georef-france-departement/`).*
