@@ -11,11 +11,11 @@ SOURCE
     - Périmètres des écoquartiers : scripts/data_cleaning_ecoquartiers.py
 
 ÉTAPES
-    1. taux_passoires()          compare trois groupes de DPE :
-                                 - France entière ;
-                                 - écoquartiers ;
-                                 - communes d'écoquartier, hors écoquartier.
-                                 Enregistre un tableau (csv) et un graphique (png).
+    1. taux_passoires()          compare les trois groupes de DPE définis dans
+                                 utils_ecoquartiers.py (France entière,
+                                 écoquartiers, communes d'écoquartier hors
+                                 écoquartier). Enregistre un tableau (csv) et un
+                                 graphique (png).
     2. carte_ecoquartiers()      carte de France des écoquartiers (html).
     3. tableaux_ecoquartiers()   statistiques descriptives : écoquartiers par label,
                                  par région, caractéristiques (contexte, type
@@ -25,17 +25,10 @@ SOURCE
     dossier diffusion du bucket S3, d'où le rapport Quarto les lit.
 
 REMARQUES
-    Passoire = étiquette F ou G, calculée séparément pour l'énergie et pour les
-    émissions de GES. Aucun filtre sur l'année de construction : elle est
-    inutile pour un taux et retirerait surtout des logements neufs dont l'année
-    n'est pas renseignée (valeur 0).
-    « France entière » inclut les écoquartiers (environ 1 % des DPE).
-    Communes d'écoquartier = code commune principal de la base écoquartiers
-    + communes des DPE situés dans un écoquartier. Un écoquartier à cheval sur
-    plusieurs communes, ou une commune fusionnée depuis, peut être mal rattaché.
-    Intervalles de confiance à 95 % : méthode de Wilson. Ils supposent des DPE
-    indépendants, ce qui n'est pas exact (plusieurs DPE d'un même immeuble) :
-    ils sont donc plutôt trop étroits.
+    Aucun filtre sur l'année de construction : elle est inutile pour un taux et
+    retirerait surtout des logements neufs dont l'année n'est pas renseignée
+    (valeur 0). Les définitions (passoire, groupes, intervalle de confiance) sont
+    dans utils_ecoquartiers.py.
 
 UTILISATION
     python scripts/croisement_dpe_ecoquartiers.py   # une fois, pour créer le résultat
@@ -43,136 +36,40 @@ UTILISATION
 """
 
 import html
-import mimetypes
-import shutil
-from pathlib import Path
 
-import duckdb
 import folium
 import geopandas as gpd
-import matplotlib
-
-matplotlib.use("Agg")  # pas d'écran : on enregistre seulement des fichiers
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import s3fs
 
 from data_cleaning_ecoquartiers import TYPES_OPERATION, load_clean_ecoquartiers
+from utils_ecoquartiers import (
+    COULEURS_GROUPES, COULEURS_LABEL, DPE_CLEAN, LABELS, OUT_DIR,
+    SQL_COMPTES, communes_ecoquartiers, compter_par_groupe, enregistrer_figure,
+    load_dpe_eco, upload_to_s3, wilson,
+)
 
 # --- Paramètres -------------------------------------------------------------
 
-DPE_CLEAN = "s3://mboutbal/diffusion/dpe_clean.parquet"
-DPE_ECO = Path("resultats/dpe_ecoquartiers.parquet")
-S3_BUCKET = "cbouyer"
-OUT_DIR = Path("figures_ecoquartiers")
-
 SEUIL_DPE_CARTE = 30  # nombre minimal de DPE pour afficher un taux sur la carte
-GROUPES = ["France entière", "Écoquartiers", "Communes d'écoquartier hors écoquartier"]
-LABELS = {1: "En projet", 2: "En chantier", 3: "Livré", 4: "Confirmé"}
-COULEURS_LABEL = {1: "#9ecae1", 2: "#fdae6b", 3: "#31a354", 4: "#006d2c"}
 
-FOND_CARTE = ("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/"
-              "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}")
-ATTRIBUTION_FOND = "Fond de carte : Esri, HERE, Garmin, OpenStreetMap contributors"
-
-# Compte, pour un groupe de DPE : effectif et nombre de passoires (F ou G)
-SQL_COMPTES = """
-    COUNT(*) AS n,
-    SUM((classe_energie IN ('F', 'G'))::INTEGER) AS passoires_energie,
-    SUM((classe_ges IN ('F', 'G'))::INTEGER) AS passoires_ges
-"""
-
-
-# --- Envoi sur S3 -----------------------------------------------------------
-
-
-def upload_to_s3(s3_bucket, file):
-    """
-    Enregistre le fichier dans le dossier diffusion du bucket défini.
-    """
-    fs = s3fs.S3FileSystem(
-        client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
-    )
-    file = Path(file)
-    chemin = f"{s3_bucket}/diffusion/{file.name}"
-    content_type = mimetypes.guess_type(file.name)[0] or "application/octet-stream"
-    with open(file, "rb") as f_in:
-        with fs.open(chemin, "wb", ContentType=content_type,
-                     ContentDisposition="inline") as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    print(f"Fichier exporté vers s3://{chemin}")
-
-
-# --- Chargement -------------------------------------------------------------
-
-
-def load_dpe_eco() -> pd.DataFrame:
-    """
-    Lit les DPE situés dans un écoquartier (sans la géométrie).
-    """
-    if not DPE_ECO.exists():
-        raise FileNotFoundError(
-            f"{DPE_ECO} introuvable : lancez d'abord "
-            "python scripts/croisement_dpe_ecoquartiers.py"
-        )
-    colonnes = ["numero_dpe", "cog", "classe_energie", "classe_ges", "eco_id"]
-    return pd.read_parquet(DPE_ECO, columns=colonnes)
-
-
-def communes_ecoquartiers(eco, dpe_eco) -> pd.DataFrame:
-    """
-    Codes commune des écoquartiers : commune principale de la base
-    écoquartiers + communes des DPE situés dans un écoquartier.
-    """
-    codes = set(eco["insee"].dropna()) | set(dpe_eco["cog"].dropna())
-    return pd.DataFrame({"cog": sorted(codes)})
+# Fichiers produits par ce script, envoyés sur S3
+FICHIERS = [
+    "taux_passoires.csv", "taux_passoires.png", "carte_ecoquartiers.html",
+    "ecoquartiers_labels.csv", "ecoquartiers_regions.csv",
+    "ecoquartiers_caracteristiques.csv", "ecoquartiers_labels_annees.png",
+    "ecoquartiers_distributions.png",
+]
 
 
 # --- 1. Taux de passoires ---------------------------------------------------
 
 
-def wilson(k, n, z=1.96):
-    """
-    Intervalle de confiance de Wilson pour une proportion k / n.
-    """
-    k, n = np.asarray(k, dtype=float), np.asarray(n, dtype=float)
-    p = k / n
-    centre = (p + z**2 / (2 * n)) / (1 + z**2 / n)
-    demi = z * np.sqrt(p * (1 - p) / n + z**2 / (4 * n**2)) / (1 + z**2 / n)
-    return centre - demi, centre + demi
-
-
-def effectifs_groupes(dpe_path, dpe_eco, communes) -> pd.DataFrame:
-    """
-    Effectif et nombre de passoires (énergie, GES) pour les trois groupes.
-    """
-    con = duckdb.connect()
-    con.register("communes", communes)
-    con.register(
-        "numeros_eco", dpe_eco[["numero_dpe"]].dropna().drop_duplicates()
-    )
-    con.register("dpe_eco", dpe_eco)
-
-    france = con.execute(
-        f"SELECT {SQL_COMPTES} FROM read_parquet(?)", [str(dpe_path)]
-    ).df()
-    ecoquartiers = con.execute(f"SELECT {SQL_COMPTES} FROM dpe_eco").df()
-    temoin = con.execute(
-        f"""SELECT {SQL_COMPTES} FROM read_parquet(?)
-            WHERE cog IN (SELECT cog FROM communes)
-              AND numero_dpe NOT IN (SELECT numero_dpe FROM numeros_eco)""",
-        [str(dpe_path)],
-    ).df()
-
-    tab = pd.concat([france, ecoquartiers, temoin], ignore_index=True)
-    tab.insert(0, "groupe", GROUPES)
-    return tab
-
-
 def tableau_passoires(effectifs: pd.DataFrame) -> pd.DataFrame:
     """
     Ajoute à chaque groupe les taux de passoires et leurs intervalles de confiance.
+    effectifs : une ligne par groupe, avec n, passoires_energie et passoires_ges.
     """
     tab = effectifs.copy()
     for suffixe in ("energie", "ges"):
@@ -184,11 +81,10 @@ def tableau_passoires(effectifs: pd.DataFrame) -> pd.DataFrame:
     return tab
 
 
-def graphique_passoires(tab: pd.DataFrame, chemin: Path) -> None:
+def graphique_passoires(tab: pd.DataFrame, chemin) -> None:
     """
     Barres des taux de passoires par groupe (énergie à gauche, GES à droite).
     """
-    couleurs = ["#7f7f7f", "#31a354", "#6baed6"]
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5), sharey=True)
     for ax, suffixe, titre in zip(
         axes, ("energie", "ges"), ("Classe énergie", "Classe GES")
@@ -199,9 +95,9 @@ def graphique_passoires(tab: pd.DataFrame, chemin: Path) -> None:
             tab[f"ic_haut_{suffixe}"] - tab[f"taux_{suffixe}"],
         ])
         x = np.arange(len(tab))
-        ax.bar(x, taux, color=couleurs, yerr=erreurs, capsize=4)
+        ax.bar(x, taux, color=COULEURS_GROUPES, yerr=erreurs, capsize=4)
         hauts = 100 * tab[f"ic_haut_{suffixe}"].to_numpy()
-        for xi, t, h in zip(x, taux, hauts):
+        for xi, t, h in zip(x, taux, hauts):  # taux écrit au-dessus de chaque barre
             ax.text(xi, h + 0.5, f"{t:.1f} %", ha="center", va="bottom", fontsize=9)
         ax.set_ylim(0, hauts.max() * 1.15)
         ax.set_xticks(x)
@@ -213,9 +109,7 @@ def graphique_passoires(tab: pd.DataFrame, chemin: Path) -> None:
         ax.set_title(titre)
     axes[0].set_ylabel("Part de DPE classés F ou G (%)")
     fig.suptitle("Taux de passoires énergétiques (intervalle de confiance à 95 %)")
-    fig.tight_layout()
-    fig.savefig(chemin, dpi=150)
-    plt.close(fig)
+    enregistrer_figure(fig, chemin)
 
 
 def taux_passoires(eco, dpe_eco, dpe_path=DPE_CLEAN, out_dir=OUT_DIR) -> pd.DataFrame:
@@ -224,7 +118,8 @@ def taux_passoires(eco, dpe_eco, dpe_path=DPE_CLEAN, out_dir=OUT_DIR) -> pd.Data
     """
     communes = communes_ecoquartiers(eco, dpe_eco)
     print(f"{len(communes)} communes d'écoquartier.")
-    tab = tableau_passoires(effectifs_groupes(dpe_path, dpe_eco, communes))
+    effectifs = compter_par_groupe(dpe_path, dpe_eco, communes, SQL_COMPTES)
+    tab = tableau_passoires(effectifs)
     out_dir.mkdir(exist_ok=True)
     tab.to_csv(out_dir / "taux_passoires.csv", index=False)
     graphique_passoires(tab, out_dir / "taux_passoires.png")
@@ -270,7 +165,7 @@ def _texte_bulle(ligne) -> str:
     )
 
 
-def carte_ecoquartiers(eco, dpe_eco, chemin: Path) -> None:
+def carte_ecoquartiers(eco, dpe_eco, chemin) -> None:
     """
     Carte de France : un point et un périmètre par écoquartier, colorés selon
     le dernier label obtenu.
@@ -279,22 +174,20 @@ def carte_ecoquartiers(eco, dpe_eco, chemin: Path) -> None:
     centres = gpd.GeoSeries(res.geometry.centroid, crs=res.crs).to_crs(4326)
     contours = res.geometry.simplify(10).to_crs(4326)  # allège le fichier html
 
-    # Fond gris clair d'Esri : sans clé d'accès, et lisible même si le fichier
-    # html est ouvert depuis le disque (OpenStreetMap refuse ce cas).
-    carte = folium.Map(
-        location=[46.6, 2.5], zoom_start=6, prefer_canvas=True,
-        tiles=FOND_CARTE, attr=ATTRIBUTION_FOND,
-    )
+    # Fond de carte OpenStreetMap par défaut, comme les cartes de stat_desc.py.
+    # Il s'affiche quand la carte est lue depuis son adresse web (le rapport le
+    # fait) ; OpenStreetMap le refuse si le fichier html est ouvert depuis le disque.
+    carte = folium.Map(location=[46.6, 2.5], zoom_start=6, prefer_canvas=True)
     for ligne, point, contour in zip(res.itertuples(), centres, contours):
         couleur = COULEURS_LABEL.get(ligne.label, "#999999")
         bulle = _texte_bulle(ligne)
-        folium.GeoJson(
+        folium.GeoJson(  # périmètre
             contour.__geo_interface__,
             style_function=lambda _, c=couleur: {
                 "color": c, "fillColor": c, "fillOpacity": 0.4, "weight": 1},
             tooltip=folium.Tooltip(bulle),
         ).add_to(carte)
-        folium.CircleMarker(
+        folium.CircleMarker(  # point, pour repérer les petits écoquartiers
             [point.y, point.x], radius=4, color=couleur, fill=True,
             fill_color=couleur, fill_opacity=0.9, weight=1,
             tooltip=folium.Tooltip(bulle),
@@ -377,7 +270,7 @@ def tableau_caracteristiques(res: gpd.GeoDataFrame) -> pd.DataFrame:
     return tab
 
 
-def graphique_labels_annees(res: gpd.GeoDataFrame, chemin: Path) -> None:
+def graphique_labels_annees(res: gpd.GeoDataFrame, chemin) -> None:
     """
     Nombre d'écoquartiers par dernier label (gauche) et par année du dernier
     label, empilé par label (droite).
@@ -396,7 +289,7 @@ def graphique_labels_annees(res: gpd.GeoDataFrame, chemin: Path) -> None:
     annees = res.dropna(subset=["label_an"]).assign(annee=lambda d: d["label_an"].astype(int))
     croise = pd.crosstab(annees["annee"], annees["label"]).reindex(
         columns=list(LABELS), fill_value=0)
-    bas = np.zeros(len(croise))
+    bas = np.zeros(len(croise))  # hauteur déjà occupée, pour empiler les labels
     for k in LABELS:
         ax2.bar(croise.index, croise[k], bottom=bas, color=COULEURS_LABEL[k],
                 label=LABELS[k])
@@ -404,12 +297,10 @@ def graphique_labels_annees(res: gpd.GeoDataFrame, chemin: Path) -> None:
     ax2.set_title("Par année du dernier label")
     ax2.set_xlabel("Année du dernier label (hors années non renseignées)")
     ax2.legend(fontsize=8)
-    fig.tight_layout()
-    fig.savefig(chemin, dpi=150)
-    plt.close(fig)
+    enregistrer_figure(fig, chemin)
 
 
-def graphique_distributions(res: gpd.GeoDataFrame, chemin: Path) -> None:
+def graphique_distributions(res: gpd.GeoDataFrame, chemin) -> None:
     """
     Histogrammes de la surface (ha) et du nombre de DPE par écoquartier, en
     échelle logarithmique : quelques très grands écoquartiers sinon écraseraient
@@ -433,9 +324,7 @@ def graphique_distributions(res: gpd.GeoDataFrame, chemin: Path) -> None:
     ax2.set_title(f"DPE par écoquartier (médiane : {avec.median():.0f} ; "
                   f"{int((res['n_dpe'] == 0).sum())} sans DPE)")
     ax2.set_xlabel("Nombre de DPE (échelle logarithmique, écoquartiers avec DPE)")
-    fig.tight_layout()
-    fig.savefig(chemin, dpi=150)
-    plt.close(fig)
+    enregistrer_figure(fig, chemin)
 
 
 def tableaux_ecoquartiers(eco, dpe_eco, out_dir=OUT_DIR) -> dict:
@@ -473,5 +362,5 @@ if __name__ == "__main__":
         print(f"\n{nom}")
         print(tableau.round(1).to_string(index=False))
 
-    for fichier in sorted(OUT_DIR.iterdir()):
-        upload_to_s3(S3_BUCKET, fichier)
+    for fichier in FICHIERS:
+        upload_to_s3(OUT_DIR / fichier)

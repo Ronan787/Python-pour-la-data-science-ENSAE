@@ -36,7 +36,8 @@ REMARQUES
     distances, passer d'abord en EPSG:2154.
 
 UTILISATION
-    Configurer les paramètres S3_BUCKET et ZIP_NAME.
+    Le zip doit déjà être dans le dossier diffusion du bucket S3 (nom du bucket :
+    S3_BUCKET dans utils_ecoquartiers.py ; nom du zip : ZIP_NAME ci-dessus).
     pip install -r requirements.txt
     python scripts/data_extraction_ecoquartiers.py
 """
@@ -46,16 +47,16 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-import s3fs
+
+from utils_ecoquartiers import S3_BUCKET, get_fs
 
 # --- Paramètres -------------------------------------------------------------
 
-S3_BUCKET = "cbouyer"
 ZIP_NAME = "opendata-les-ecoquartiers.zip"  # nom du zip dans S3
 
 S3_PATH = f"{S3_BUCKET}/diffusion/{ZIP_NAME}"
-OUT_DIR = Path("ecoquartiers")
-ZIP_PATH = OUT_DIR / ZIP_NAME
+DATA_DIR = Path("ecoquartiers")
+ZIP_PATH = DATA_DIR / ZIP_NAME
 
 CRS_ATTENDU = "EPSG:4326"
 COLONNES_ATTENDUES = [
@@ -69,22 +70,16 @@ COLONNES_ATTENDUES = [
 
 def download_from_s3() -> None:
     """
-    Copie le zip depuis le dossier diffusion du bucket S3 vers OUT_DIR.
+    Copie le zip depuis le dossier diffusion du bucket S3 vers DATA_DIR.
     """
-    if S3_BUCKET == "nom_du_bucket":
-        raise ValueError("Renseignez le nom du bucket dans S3_BUCKET.")
-
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if ZIP_PATH.exists():
         print(f"{ZIP_PATH} déjà présent, pas de nouvelle copie.")
         return
 
-    fs = s3fs.S3FileSystem(
-        client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
-    )
     tmp = ZIP_PATH.with_suffix(".tmp")
-    fs.get(S3_PATH, str(tmp))
+    get_fs().get(S3_PATH, str(tmp))
     tmp.replace(ZIP_PATH)  # le .zip n'existe jamais à l'état partiel
     print(f"Fichier copié depuis s3://{S3_PATH}")
 
@@ -94,12 +89,12 @@ def download_from_s3() -> None:
 
 def extract_zip() -> Path:
     """
-    Décompresse le zip dans OUT_DIR et renvoie le chemin du fichier .shp.
+    Décompresse le zip dans DATA_DIR et renvoie le chemin du fichier .shp.
     """
     with zipfile.ZipFile(ZIP_PATH) as z:
-        z.extractall(OUT_DIR)
+        z.extractall(DATA_DIR)
 
-    shp_files = sorted(OUT_DIR.rglob("*.shp"))
+    shp_files = sorted(DATA_DIR.rglob("*.shp"))
     if len(shp_files) != 1:
         raise ValueError(
             f"Un seul .shp attendu, {len(shp_files)} trouvé(s) : "

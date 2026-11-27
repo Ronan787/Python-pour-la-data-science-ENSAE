@@ -38,24 +38,19 @@ UTILISATION
 import geopandas as gpd
 import pandas as pd
 import pyarrow.parquet as pq
-import s3fs
-from pathlib import Path
 
 from data_cleaning_ecoquartiers import CRS_TRAVAIL, load_clean_ecoquartiers
+from utils_ecoquartiers import DPE_CLEAN, DPE_ECO, get_fs
 
 # --- Paramètres -------------------------------------------------------------
 
-# DPE nettoyés : fichier produit par scripts/data_cleaning_ademe.py
-DPE_BUCKET = "mboutbal"
-DPE_FILE = "dpe_clean.parquet"        # nom exact du parquet nettoyé dans diffusion/
-DPE_S3_PATH = f"{DPE_BUCKET}/diffusion/{DPE_FILE}"
+# DPE nettoyés (produits par scripts/data_cleaning_ademe.py), sans le « s3:// »
+DPE_S3_PATH = DPE_CLEAN.removeprefix("s3://")
 
 GEO_SCORE_COL = "score_geocodage"
 GEO_SCORE_MIN = None  # ex. 0.5 ; None = pas de filtre (voir la distribution du score)
 COLONNES_DPE = ["numero_dpe", "latitude", "longitude"]
 TAILLE_PAQUET = 500_000
-OUT_DIR = Path("resultats")
-OUT_FILE = OUT_DIR / "dpe_ecoquartiers.parquet"
 COLONNES_ECO = ["id", "nom", "label", "label_an", "livre", "anru", "surface_ha"]
 
 
@@ -137,14 +132,9 @@ def cross_dpe_ecoquartiers(batches, eco: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 def iter_dpe_batches():
     """
     Lit les DPE nettoyés depuis le dossier diffusion du bucket S3, paquet par
-    paquet (generateur de DataFrames).
+    paquet (générateur de DataFrames).
     """
-    if "A_COMPLETER" in (DPE_BUCKET, DPE_FILE):
-        raise ValueError("Renseignez DPE_BUCKET et DPE_FILE (nom du parquet DPE nettoyé).")
-    fs = s3fs.S3FileSystem(
-        client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
-    )
-    with fs.open(DPE_S3_PATH, "rb") as f:
+    with get_fs().open(DPE_S3_PATH, "rb") as f:
         for batch in pq.ParquetFile(f).iter_batches(batch_size=TAILLE_PAQUET):
             yield batch.to_pandas()
 
@@ -153,11 +143,11 @@ def save_result(dpe_eco: gpd.GeoDataFrame) -> None:
     """
     Enregistre le résultat dans resultats/ (fichier temporaire puis renommage).
     """
-    OUT_DIR.mkdir(exist_ok=True)
-    tmp = OUT_FILE.with_suffix(".tmp")
+    DPE_ECO.parent.mkdir(exist_ok=True)
+    tmp = DPE_ECO.with_suffix(".tmp")
     dpe_eco.to_parquet(tmp)
-    tmp.replace(OUT_FILE)
-    print(f"Résultat enregistré : {OUT_FILE}")
+    tmp.replace(DPE_ECO)
+    print(f"Résultat enregistré : {DPE_ECO}")
 
 
 # ----- Exécution du script --------------------------------------------
