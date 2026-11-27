@@ -25,7 +25,7 @@ from tqdm.auto import tqdm
 
 # PARAMETRES A CONFIGURER
 S3_BUCKET = "mboutbal"  # Nom du bucket à paramétrer pour créer une sauvegarde
-VERSION = "dpe_2026-11-25"  # Nom du fichier final dans S3
+VERSION = "dpe_date_22_11"  # Nom du fichier final dans S3
 
 # URL de l'API (source des données)
 URL = "https://data.ademe.fr/data-fair/api/v1/datasets/dpe-france"
