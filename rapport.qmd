@@ -160,7 +160,7 @@ carte_couverture_dpe
 
 La carte montre une couverture très hétérogène entre les communes. Dans un nombre non négligeable d’entre elles, le nombre de DPE dépasse celui des logements recensés. Un même logement peut avoir fait l’objet de plusieurs diagnostics, ce qui pourrait expliquer une partie de l’écart. Il paraît toutefois peu probable que ce facteur suffise à l’expliquer, compte tenu de la durée de validité théorique de dix ans d’un DPE. Des différences de périmètre entre les deux sources peuvent également y contribuer. Ces résultats doivent donc être interprétés avec prudence. 
 
-En conclusion, nous n’avons pas évalué formellement la représentativité de notre échantillon. Deux sources de biais de sélection sont toutefois identifiées. La couverture des DPE varie géographiquement, et l’obligation de réaliser un DPE à la vente ou à la location favorise la présence des logements récents dans la base. L’ampleur de ces biais reste à mesurer.
+En conclusion, nous n’avons pas évalué formellement la représentativité de notre échantillon par manque de données exhaustives (qui ne sont pas en opendata). Deux sources de biais de sélection sont toutefois identifiées. La couverture des DPE varie géographiquement, et l’obligation de réaliser un DPE à la vente ou à la location favorise la présence des logements récents dans la base. L’ampleur de ces biais reste à mesurer.
 
 
 # Sources et extraction des données
