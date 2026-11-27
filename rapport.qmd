@@ -39,6 +39,8 @@ import duckdb
 import folium
 import geopandas as gpd
 import pandas as pd
+import s3fs
+from IPython.display import HTML, Image, display
 ```
 
 # Introduction
@@ -49,7 +51,7 @@ La performance énergétique des logements constitue un enjeu majeur de la trans
 
 Instauré en 2006, le diagnostic de performance énergétique (DPE) est un instrument central des politiques de rénovation énergétique. Obligatoire lors de la vente ou de la location d'un logement, il informe sur sa consommation énergétique et ses émissions de gaz à effet de serre (GES). Les travaux successifs du Service des données et études statistiques (SDES) ont ainsi documenté les disparités selon les caractéristiques des logements et les territoires, à travers plusieurs estimations nationales entre 2018 et 2025 [@sdes2018; @sdes2025]. Ces disparités ont également été analysées à des échelles plus fines, notamment dans les quartiers prioritaires de la politique de la ville (QPV), où se cumulent fréquemment des vulnérabilités énergétiques et socio-économiques [@onpv2020].
 
-Si la littérature s'est largement attachée à caractériser les populations et les territoires les plus vulnérables [@insee2025], notre projet s'intéresse à une autre catégorie de quartiers : ceux reconnus pour leur démarche environnementale. Lancés en 2009 et dotés d'un label national depuis 2012 [@ministere2024], les ÉcoQuartiers constituent un instrument des politiques d'aménagement urbain durable. Les collectivités volontaires adhèrent à une charte de 20 engagements couvrant quatre dimensions : environnementale, sociale, économique et de gouvernance. Cette démarche leur permet de bénéficier d'un accompagnement technique et d'obtenir le label officiel "ÉcoQuartier". Toutefois, la labellisation repose sur une appréciation multidimensionnelle des projets, sans seuil national uniforme de performance énergétique. Dès lors, nous cherchons à déterminer si les écoquartiers présentent effectivement de meilleures performances énergétiques que les autres quartiers, que cet éventuel avantage résulte de la sélection des projets ou des aménagements réalisés, ou si leur exemplarité relève principalement d'un effet de labellisation.
+Si la littérature s'est largement attachée à caractériser les populations et les territoires les plus vulnérables [@insee2025], notre projet s'intéresse à une autre catégorie de quartiers : ceux reconnus pour leur démarche environnementale. Lancés en 2009 et dotés d'un label national depuis 2012 [@ministere2024], les écoquartiers constituent un instrument des politiques d'aménagement urbain durable. Les collectivités volontaires adhèrent à une charte de 20 engagements couvrant quatre dimensions : environnementale, sociale, économique et de gouvernance. Cette démarche leur permet de bénéficier d'un accompagnement technique et d'obtenir le label officiel "ÉcoQuartier". Toutefois, la labellisation repose sur une appréciation multidimensionnelle des projets, sans seuil national uniforme de performance énergétique. Dès lors, nous cherchons à déterminer si les écoquartiers présentent effectivement de meilleures performances énergétiques que les autres quartiers, que cet éventuel avantage résulte de la sélection des projets ou des aménagements réalisés, ou si leur exemplarité relève principalement d'un effet de labellisation.
 
 L'exploitation des données DPE appelle toutefois plusieurs précautions méthodologiques. Premièrement, les diagnostics ne constituent pas un échantillon exhaustif et représentatif du parc résidentiel, ce qui nécessite des redressements statistiques pour produire des estimations nationales représentatives de l'ensemble du parc de logement [@sdes2025]. Deuxièmement, la consommation théorique en énergie, mesurée par le DPE, peut différer sensiblement de la consommation effective des ménages, notamment en raison de leurs comportements d'ajustement [@astier2024]. Troisièmement, l'étiquette énergétique constitue également un signal économique, valorisé sur le marché immobilier, susceptible de susciter des comportements stratégiques autour des seuils de classification [@civel2025]. Ces difficultés peuvent conduire à produire des estimations différentes selon la méthode de correction retenue [@girard2022].
 
@@ -184,7 +186,7 @@ print("Nombre total de DPE :", nb_dpe)
 ```
 
 
-## Les EcoQuartiers
+## Les écoquartiers
 
 Les périmètres géographiques des écoquartiers sont issus du jeu de données publié par le ministère de la Transition écologique, au format Shapefile ([ÉcoQuartiers, open data](https://www.ecoquartiers.logement.gouv.fr/document/opendata-les-ecoquartiers/)). Outre les contours géographiques, cette base renseigne le nom des opérations, leur commune de rattachement, leur contexte urbain (centre, faubourg, périphérie, hameau ou autre), la nature des opérations d’aménagement (notamment extension urbaine ou renouvellement urbain) ainsi que leur éventuelle appartenance à un périmètre d’intervention de l’ANRU. Les projets recoivent graduellement des labels. La variable principale est le dernier label obtenu : le label 1 ("en projet") est obtenu lors de l'entrée dans la phase de projet, le label 2 ("en chantier") au début du chantier, le label 3 ("livré") à la fin des travaux, et le label 4 ("confirmé") après une expertise trois après. Nous disposons de l'année d'obtention du dernier label.
 
@@ -365,7 +367,7 @@ Pour chaque logement, la base indique la classe DPE « climat » (de A à G) et 
 On constate que certains points ont des étiquettes qui ne correspondent pas à leurs émissions de gaz à effet de serre théoriques. On aurait pu envisager un nettoyage plus poussé en excluant les DPE dont les émissions estimées s’écartent trop de la plage correspondant à la classe renseignée. Il aurait toutefois fallu fixer une marge de tolérance en partie arbitraire. Nous avons donc conservé ces observations. Par ailleurs, on s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre (phénomène de "bunching"^[Le *bunching* désigne une concentration inhabituelle d’observations au voisinage d’un seuil, par exemple juste du côté qui donne accès à une meilleure classe DPE.]). Or ici, les boîtes sont plutôt centrées.
 
 
-### Étiquettes DPE selon l’année de construction du bâti
+### Étiquettes DPE climat selon l’année de construction du bâti
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
@@ -426,7 +428,7 @@ Comme pour le DPE "climat", la carte ci-dessous représente pour chaque départe
   </iframe>
 </div>
 
-La carte ci-dessus dénote avec la carte obtenue pour les DPE "climat". Ici, à l'exception des 5 départements que sont Lozère (23% de passoires énergétiques), le Cantal (27%), la Creuse (23%), Nièvre (25%) et les Hautes Alpes (32%), le taux de passoire par département ne dépasse pas 22%. On constate encore une fois que les départements présents à l'ouest et au sud ont un faible taux de passoires (<8%). 
+On peut voir que à l'exception des 5 départements que sont Lozère (23% de passoires énergétiques), le Cantal (27%), la Creuse (23%), Nièvre (25%) et les Hautes Alpes (32%), le taux de passoire par département ne dépasse pas 22%. On constate encore une fois que les départements présents à l'ouest et au sud ont un faible taux de passoires énergétiques (<8%). 
 
 ### Lien entre émission de gaz à effet de serre et étiquette 
 
@@ -444,7 +446,7 @@ Comme précédemment, les bandes de couleurs représentent les classes théoriqu
 Mêmes remarques que dans le cas du DPE "climat" : on constate que certains points ont des étiquettes qui ne correspondent pas à leur émission de gaz à effet de serre théorique. On s'attendait à ce que les données soient concentrées autour des seuils qui permettent de passer d'une classe à une autre. Or ici, les boîtes sont plutôt centrées, à l'exception de la classe A. Pour celle-ci, la boîte à moustache est concentrée autour de la valeur de 50kWhEP/m².an qui est la valeur permettant de passer de la classe B à la classe A. 
 
 
-### Etiquettes et année de construction
+### Étiquettes DPE énergie selon l’année de construction du bâti
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
@@ -456,11 +458,9 @@ Mêmes remarques que dans le cas du DPE "climat" : on constate que certains poin
   </iframe>
 </div>
 
-Peu de DPE ont été réalisés sur des bâtiments construits avant 1941, et ce quelle que soit l'étiquette. Les bâtiments construits entre 1941 et 1961 ont une majorité d'étiquettes D et E. Au contraire, les bâtiments récemment construits, entre 2001 et 2021 ont une majorité d'étiquettes A et B. On constate que le DPE est meilleur pour des bâtiments construits après les années 2000.
+L'interprétation est comparable à celle des DPE "climat", en particulier les bâtiments récemment construits, entre 2001 et 2021 ont une majorité d'étiquettes A et B. On constate que le DPE est meilleur pour des bâtiments construits après les années 2000. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
 
-Pour les bâtiments construits entre 2001 et 2021, même constat que pour le DPE "climat" : Quelle que soit l'année, on remarque un faible nombre de passoires énergétiques. Les bâtiments construits avant 2007 ont en majorité des étiquettes C, D et E. Après 2013 (année de réforme des DPE), les étiquettes sont en majorité des étiquettes A et B. 
-
-### Etiquette et type de bâtiment
+### Étiquettes et types de bâtiment
 
 <div style="width: 100%; height: 500px; margin: 20px 0;">
   <iframe
@@ -472,22 +472,16 @@ Pour les bâtiments construits entre 2001 et 2021, même constat que pour le DPE
   </iframe>
 </div>
 
-Pour tout type de bâtiment, l'étiquette D est présente en grande proportion (environ 27%). 
-Pour les bâtiments collectifs à usage principal d'habitation, l'étiquette C est également présente en grande proportion (>30%).
-Les étiquettes F  et G, associées à des passoires énergétiques, sont présentes en faible proportions (< 5% pour l'étiquette G et < 10% pour l'étiquette F). 
+Pour tout type de bâtiment, l'étiquette D est présente en grande proportion (environ 27%). Pour les bâtiments collectifs à usage principal d'habitation, l'étiquette C est également présente en grande proportion (>30%). Les étiquettes F et G, associées à des passoires énergétiques, sont présentes en faible proportions (<5% pour l'étiquette G et <10% pour l'étiquette F). 
 
-# Les écoquartiers face aux DPE
+# Zoom : les DPE dans les écoquartiers 
 
 Cette partie décrit les écoquartiers, puis compare les DPE qu'ils contiennent à ceux du reste de la France. Nous distinguons trois groupes de DPE : la **France entière** (7,3 millions de DPE), les **écoquartiers** (91 393 DPE) et les **communes d'écoquartier hors écoquartier**, c'est-à-dire les DPE situés dans une commune qui compte au moins un écoquartier, mais hors de son périmètre (2 millions de DPE, 508 communes). Ce troisième groupe tient compte du fait que les écoquartiers sont plutôt situés dans des communes urbaines, qui ne ressemblent pas à la moyenne nationale. Une passoire énergétique est un logement classé F ou G, pour l'énergie comme pour les émissions de gaz à effet de serre (GES).
 
-Les tableaux et figures sont calculés par les scripts **scripts/stat_desc_ecoquartiers.py**, **scripts/structure_logement_ecoquartiers.py** et **scripts/comparaisons_ecoquartiers.py**, qui s'appuient sur des fonctions communes (**scripts/utils_ecoquartiers.py**) et enregistrent leurs résultats sur S3 pour que ce rapport les affiche.
+Les tableaux et figures sont calculés par les scripts `scripts/stat_desc_ecoquartiers.py`, `scripts/structure_logement_ecoquartiers.py` et `scripts/comparaisons_ecoquartiers.py``, qui s'appuient sur des fonctions communes (`scripts/utils_ecoquartiers.py`) et enregistrent leurs résultats sur S3 pour que ce rapport les affiche.
 
 ```{python}
 #| include: false
-import pandas as pd
-import s3fs
-from IPython.display import HTML, Image, display
-
 BUCKET_ECO = "cbouyer"
 fs = s3fs.S3FileSystem(  # lecture anonyme : le dossier diffusion est public
     anon=True, client_kwargs={"endpoint_url": "https://minio.lab.sspcloud.fr"}
@@ -544,7 +538,9 @@ La carte montre les 467 écoquartiers de France métropolitaine, colorés selon 
 
 ```{python}
 #| echo: false
+
 afficher_carte("carte_ecoquartiers.html")
+
 ```
 
 Plus de 80 % des écoquartiers ne sont pas encore construits : 193 sont au stade de projet et 189 en chantier, contre 72 livrés et 13 confirmés. L'Île-de-France en concentre 99, soit un cinquième d'entre eux, et plus du tiers des DPE (34 488). À l'inverse, la Normandie (20 écoquartiers pour 892 DPE) et la Corse (4 écoquartiers pour 23 DPE) sont très peu couvertes : il est impossible d'en tirer des conclusions régionales.
@@ -559,9 +555,10 @@ tableau(pd.DataFrame({
     "DPE au total": labels["dpe_total"].map(lambda v: fr(v, 0)),
     "DPE par écoquartier (médiane)": labels["dpe_median"].map(lambda v: fr(v, 0)),
 }))
+
 ```
 
-Le nombre de DPE par écoquartier augmente fortement avec l'avancement du projet : la médiane est de 16 DPE pour un projet, de 91 pour un chantier, de 187 pour un quartier livré et de 286 pour un quartier confirmé. Les périmètres des projets et des chantiers couvrent en grande partie des quartiers déjà construits : leurs DPE décrivent le plus souvent le bâti d'avant l'opération. Ils forment 70 % des DPE d'écoquartier (63 699 sur 91 393).
+Le nombre de DPE par écoquartier augmente fortement avec l'avancement du projet : la médiane est de 16 DPE pour un projet, de 91 pour un chantier, de 187 pour un quartier livré et de 286 pour un quartier confirmé. 
 
 ```{python}
 #| echo: false
@@ -585,8 +582,6 @@ tableau(pd.DataFrame({
 }))
 ```
 
-Les écoquartiers sont surtout situés en centre-ville (44 %) ou en faubourg (25 %). Les types d'opération se cumulent : 42 % comprennent une extension maîtrisée, 36 % un renouvellement de quartier existant et 23 % une reconversion de friche. 37 écoquartiers (8 %) se trouvent dans une zone ANRU.
-
 ## Taux de passoires énergétiques
 
 ```{python}
@@ -594,18 +589,18 @@ Les écoquartiers sont surtout situés en centre-ville (44 %) ou en faubourg (25
 afficher_png("taux_passoires.png")
 ```
 
-Les écoquartiers comptent beaucoup moins de passoires que la France : 2,7 % des DPE sont classés F ou G pour l'énergie, contre 10,0 % en France, et 5,1 % pour le GES, contre 10,8 %. Les communes d'écoquartier, hors écoquartier, se situent entre les deux (8,7 % et 10,1 %). Ces taux portent sur 91 393 DPE d'écoquartier, 7,3 millions de DPE en France et 2,0 millions dans les communes d'écoquartier hors écoquartier. Les intervalles de confiance sont très étroits, mais ils sous-estiment l'incertitude : ils supposent des DPE indépendants, alors que plusieurs DPE peuvent concerner un même immeuble.
+Les écoquartiers comptent beaucoup moins de diagnostics F et G que la France entière : 2,7 % des DPE sont classés F ou G pour l'énergie, contre 10,0 % en France, et 5,1 % pour le GES, contre 10,8 %. Les communes d'écoquartiers, hors écoquartiers, sont quant à elles assez proches de la moyenne nationale (8,7 % et 10,1 %). Ces taux portent sur 91 393 DPE d'écoquartier, 7,3 millions de DPE en France et 2,0 millions dans les communes d'écoquartier hors écoquartier. Les intervalles de confiance sont très étroits, mais ils sous-estiment l'incertitude : ils supposent des DPE indépendants, alors que plusieurs DPE peuvent concerner un même immeuble.
 
 ## Les écoquartiers sont surtout neufs
 
-Ce résultat ne peut pas être interprété sans tenir compte de la nature des logements diagnostiqués. Les DPE neufs, établis au moment de la construction, sont très rarement des passoires, et les écoquartiers en contiennent beaucoup plus que le reste de la France.
+Ce résultat ne peut pas être interprété sans tenir compte de la nature des logements diagnostiqués. Les DPE neufs, établis au moment de la construction, sont très rarement des passoires, et les écoquartiers en contiennent beaucoup plus que le reste de la France. 
 
 ```{python}
 #| echo: false
 afficher_png("structure_logement.png")
 ```
 
-57 % des DPE d'écoquartier sont des DPE de logement neuf, contre 20 % en France, et 54 % concernent des logements construits entre 2013 et 2021, contre 20 % en France. Les écoquartiers comptent aussi beaucoup moins de maisons individuelles (7 % des DPE, contre 42 %) et davantage de DPE de type « logement » (78 %, contre 51 %). Pour mesurer ce que cette structure explique, nous calculons un **taux attendu** : le taux de passoires que le groupe aurait si, pour chaque catégorie de logement (modèle de DPE, type de bâtiment et période de construction), il avait les mêmes performances que la France entière.
+57 % des DPE dans les écoquartiers sont des DPE de logement neuf, contre 20 % en France, et 54 % concernent des logements construits entre 2013 et 2021, contre 20 % en France. Les écoquartiers comptent aussi beaucoup moins de diagnostics de maisons individuelles (7 % des DPE, contre 42 %) et davantage de DPE d'appartements (78 %, contre 51 %). Pour mesurer ce que cette structure explique, nous calculons un **taux attendu** : le taux de passoires que le groupe aurait si, pour chaque catégorie de logement (modèle de DPE, type de bâtiment et période de construction), il avait les mêmes performances que la France entière.
 
 ```{python}
 st = lire_csv("taux_passoires_standardise.csv")
@@ -655,7 +650,7 @@ afficher_png("passoires_par_label.png")
 
 Le taux de passoires énergétiques baisse avec l'avancement du projet : 4,4 % pour les projets, 2,5 % pour les chantiers, 1,8 % pour les quartiers livrés et 0,8 % pour les quartiers confirmés. Cette baisse accompagne celle du taux attendu pour la structure (5,5 %, 4,4 %, 2,5 % et 2,0 %), car les écoquartiers livrés ou confirmés comptent davantage de logements neufs. L'écart avec le taux attendu est négatif pour les quatre labels (entre −0,7 et −1,9 point), sans progression nette selon le label. Pour le GES, il n'y a pas de schéma net : les écoquartiers au stade de projet (+2,4 points) et ceux qui sont livrés (+1,3 point) ont plus de passoires que ce que leur structure laisse prévoir, les chantiers et les quartiers confirmés en ont moins (−1,4 et −1,3 point). En regroupant les labels 3 et 4, les écoquartiers construits ont 1,6 % de passoires énergétiques (attendu : 2,4 %) et 4,0 % de passoires GES (attendu : 3,3 %). Ces écarts sont à lire avec prudence : le taux attendu est calculé sans intervalle de confiance, et le label 4 ne compte que 13 écoquartiers (5 934 DPE).
 
-## Classes énergie et GES
+## Répartition des DPE "énergie" et "climat"
 
 ```{python}
 #| echo: false
@@ -671,7 +666,9 @@ La première figure compare la répartition des DPE entre les classes A à G dan
 
 La répartition des classes est très différente pour l'énergie : 60 % des DPE d'écoquartier sont classés A ou B, contre 23 % en France (22 % dans les communes d'écoquartier hors écoquartier), alors que la classe D, la plus fréquente en France (29 %), ne représente que 15 % des DPE d'écoquartier. Pour le GES, l'écart est plus faible : 37 % des DPE d'écoquartier sont classés A ou B, contre 32 % en France. À l'intérieur d'une classe, en revanche, les consommations médianes sont presque identiques : 42 kWh/m²/an en classe A dans les écoquartiers contre 41 en France, 185 contre 193 en classe D, 534 contre 535 en classe G, et 26 contre 28 kg CO₂/m²/an d'émissions en classe D du GES. C'est attendu, puisque les classes sont définies par des seuils de consommation : les différences entre les groupes viennent de la répartition entre les classes, et non du niveau de consommation à l'intérieur de chacune.
 
-## Limites
+## Conclusion et discussion
+
+
 
 - Les DPE ne sont pas un échantillon représentatif du parc de logements : ils sont établis à la construction, à la vente ou à la location. La structure du parc diagnostiqué diffère donc beaucoup de celle du parc existant, et plus encore dans les écoquartiers.
 - 70 % des DPE d'écoquartier se trouvent dans des périmètres encore en projet ou en chantier : ils décrivent surtout le bâti d'avant l'opération, et non les logements construits dans l'écoquartier.
