@@ -23,7 +23,7 @@ UTILISATION
     python scripts/stat_desc.py
 """
 
-# Librairie nécessaires par la suite 
+# Librairie nécessaires par la suite
 import folium
 import geopandas as gpd
 import s3fs
@@ -33,6 +33,7 @@ import matplotlib.pyplot as plt
 import duckdb
 import pandas as pd
 import mimetypes
+
 
 # Fonction upload_to_s3 présente dans data_extraction_ademe.py avec quelques modifications 
 # notamment l'ajout d'un argument file permet d'utiliser cette fonction par la suite 
@@ -73,7 +74,7 @@ dpe = duckdb.sql("""
 """).df()
 
 
-## Carte de la France métropolitaine avec le taux de passoire et la proportion d'étiquette par département
+# Carte de la France métropolitaine avec le taux de passoire et la proportion d'étiquette par département
 # Fichier avec les contours des départements enregistré dans l'espace de stockage du SSPCloud
 BUCKET_R = "ron"
 path = f"s3://{BUCKET_R}/diffusion/georef-france-departement/georef-france-departement-millesime.shp"
@@ -81,7 +82,7 @@ path = f"s3://{BUCKET_R}/diffusion/georef-france-departement/georef-france-depar
 # Lignes de code communes aux classes ges et energie
 # C'est pour ça qu'elle sont en dehors de la fonction carte 
 # pour ne pas les répéter 
-departements_gdf = gpd.read_file(path, encoding = 'utf-8')
+departements_gdf = gpd.read_file(path, encoding='utf-8')
 
 # Certaines colonnes ont le même nom dans departements_gdf donc on les renomme
 departements_gdf.columns = ['Annee', 'Code_Offici_dep', 'Nom_Officie_dep', 'Code_Offici_reg', 'Code_Offici_cour_dep', 'Nom_Officie_dep_maj', 'Nom_Officie_dep_min', 'Nom_Officie_reg', 'Code_Iso_31', 'Type', 'Statut_Depa', 'SIREN', 'Est_une_CTU', 'geometry']
@@ -93,20 +94,21 @@ departements_gdf = departements_gdf[departements_gdf['Code_Iso_31'] == 'FXX']
 # On passe de '['01']' à '01'
 departements_gdf['Code_Offici_dep'] = departements_gdf['Code_Offici_dep'].apply(lambda x : x[2:4])
 
+
 # Fonction qui génére la carte 
-def carte(colonne = 'classe_ges', departements_gdf = departements_gdf):
+def carte(colonne='classe_ges', departements_gdf=departements_gdf):
     # On calcule la proportion de chaque classe par département 
     dpe_dep = (
         dpe
         .groupby('code_departement')
         [colonne]
-        .value_counts(normalize = True)
+        .value_counts(normalize=True)
         .rename('proportion')
         .reset_index()
     )
 
     # pour merge ensuite, on renomme la colonne avec le numéro des départements 
-    dpe_dep = dpe_dep.rename(columns = {'code_departement' : 'Code_Offici_dep'})
+    dpe_dep = dpe_dep.rename(columns={'code_departement' : 'Code_Offici_dep'})
 
     # On calcule ensuite le taux de passoires par département pour colorer les départements en fonction de celui-ci
     taux_passoires = (
@@ -124,13 +126,13 @@ def carte(colonne = 'classe_ges', departements_gdf = departements_gdf):
     # Avec une disjonction de cas en fonction de la classe : ges ou energie
     if colonne == 'classe_ges':
         dpe_dep['Legende'] = ['{} : {} '.format(row.classe_ges, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
-    else :
+    else:
         dpe_dep['Legende'] = ['{} : {} '.format(row.classe_energie, round(row.proportion, 2)) for row in dpe_dep.itertuples()]
 
     # On agrège les légendes pour avoir la proportion de chaque classe 
     dpe_dep = (
         dpe_dep
-        .sort_values(by = ['Code_Offici_dep', 'Legende'], ascending=[True, True])
+        .sort_values(by=['Code_Offici_dep', 'Legende'], ascending=[True, True])
         .groupby('Code_Offici_dep')
         ['Legende']
         .sum()
@@ -139,29 +141,29 @@ def carte(colonne = 'classe_ges', departements_gdf = departements_gdf):
     )
 
     # On merge les contours des départements et les proportions des classes pour chaque département
-    departements_gdf = departements_gdf.merge(dpe_dep, how = 'left', on = 'Code_Offici_dep')
-    #Conversion en GeoJSON
+    departements_gdf = departements_gdf.merge(dpe_dep, how='left', on='Code_Offici_dep')
+    # Conversion en GeoJSON
     departements_json = departements_gdf.to_json()
 
     # Création de la carte 
-    carte = folium.Map(location = (47,1), zoom_start = 6)
+    carte = folium.Map(location=(47,1), zoom_start=6)
 
     # On ajoute la couleur
     chloropeth = folium.Choropleth(
-        geo_data = departements_json,
-        data = taux_passoires,
-        columns = ['Code_Offici_dep', 'proportion'],
-        key_on = 'feature.properties.Code_Offici_dep',
-        fill_color = 'YlOrRd',
-        fill_opacity = 0.5,
-        line_opacity = 1,
-        legend_name = 'Taux de passoires dans le département'
+        geo_data=departements_json,
+        data=taux_passoires,
+        columns=['Code_Offici_dep', 'proportion'],
+        key_on='feature.properties.Code_Offici_dep',
+        fill_color='YlOrRd',
+        fill_opacity=0.5,
+        line_opacity=1,
+        legend_name='Taux de passoires dans le département'
     )
     # On ajoute la légende quand la souris survole le département
     chloropeth.geojson.add_child(folium.features.GeoJsonTooltip(
         fields=['Legende_agregee'],
         aliases=['Proportion :'], 
-        label = False)
+        label=False)
         )
     chloropeth.add_to(carte)
 
@@ -171,8 +173,8 @@ def carte(colonne = 'classe_ges', departements_gdf = departements_gdf):
     upload_to_s3(BUCKET_R, f'carte_{colonne}.html')
 
 
-#Barplot représentant la proportion d'étiquettes
-def barplot(colonne = 'classe_ges'):
+# Barplot représentant la proportion d'étiquettes
+def barplot(colonne='classe_ges'):
     # On réinitialise la figure 
     plt.clf()
     # On calcule la proportion de chaque étiquette 
@@ -232,22 +234,22 @@ def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
 
     # On explicite les zones en fonction de si l'étiquette correspond à une classe ges ou à une classe energie 
     ymin, ymax = plt.ylim()
-    if by == 'classe_ges': 
-        plt.axhspan(ymin, 5, color='#7f7f7f', alpha=0.2, label='classe A') # Gris
-        plt.axhspan(6, 10, color='#31a354', alpha=0.2, label='classe B') # Vert
-        plt.axhspan(11, 20, color='#6baed6', alpha=0.2, label='classe C') # Bleu
-        plt.axhspan(21, 35, color='#8c6bb1', alpha=0.2, label='classe D') # Violet
-        plt.axhspan(36, 55, color='#e6ab02', alpha=0.2, label='classe E') # Jaune moutarde
-        plt.axhspan(56, 80, color='#e6550d', alpha=0.2, label='classe F') # Orange
-        plt.axhspan(81, ymax, color='#dd6a8c', alpha=0.2, label='classe G') # Rose
-    else : 
-        plt.axhspan(ymin, 50, color='#7f7f7f', alpha=0.2, label='classe A') # Gris
-        plt.axhspan(51, 90, color='#31a354', alpha=0.2, label='classe B') # Vert
-        plt.axhspan(91, 150, color='#6baed6', alpha=0.2, label='classe C') # Bleu
-        plt.axhspan(151, 230, color='#8c6bb1', alpha=0.2, label='classe D') # Violet
-        plt.axhspan(231, 330, color='#e6ab02', alpha=0.2, label='classe E') # Jaune moutarde
-        plt.axhspan(331, 450, color='#e6550d', alpha=0.2, label='classe F') # Orange
-        plt.axhspan(451, ymax, color='#dd6a8c', alpha=0.2, label='classe G') # Rose
+    if by == 'classe_ges':
+        plt.axhspan(ymin, 5, color='#7f7f7f', alpha=0.2, label='classe A')  # Gris
+        plt.axhspan(6, 10, color='#31a354', alpha=0.2, label='classe B')  # Vert
+        plt.axhspan(11, 20, color='#6baed6', alpha=0.2, label='classe C')  # Bleu
+        plt.axhspan(21, 35, color='#8c6bb1', alpha=0.2, label='classe D')  # Violet
+        plt.axhspan(36, 55, color='#e6ab02', alpha=0.2, label='classe E')  # Jaune moutarde
+        plt.axhspan(56, 80, color='#e6550d', alpha=0.2, label='classe F')  # Orange
+        plt.axhspan(81, ymax, color='#dd6a8c', alpha=0.2, label='classe G')  # Rose
+    else:
+        plt.axhspan(ymin, 50, color='#7f7f7f', alpha=0.2, label='classe A')  # Gris
+        plt.axhspan(51, 90, color='#31a354', alpha=0.2, label='classe B')  # Vert
+        plt.axhspan(91, 150, color='#6baed6', alpha=0.2, label='classe C')  # Bleu
+        plt.axhspan(151, 230, color='#8c6bb1', alpha=0.2, label='classe D')  # Violet
+        plt.axhspan(231, 330, color='#e6ab02', alpha=0.2, label='classe E')  # Jaune moutarde
+        plt.axhspan(331, 450, color='#e6550d', alpha=0.2, label='classe F')  # Orange
+        plt.axhspan(451, ymax, color='#dd6a8c', alpha=0.2, label='classe G')  # Rose
 
     plt.suptitle('')
     col_bis = f'{colonne}'.replace("_", " ")
@@ -256,7 +258,7 @@ def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
     plt.xlabel(by_bis.capitalize())
     if by == 'classe_ges':
         plt.ylabel(f'{col_bis.capitalize()} en kgéqCO2/m².an')
-    else :
+    else:
         plt.ylabel(f'{col_bis.capitalize()} en kWhEP/m².an')
     plt.legend()
 
@@ -265,9 +267,10 @@ def boxplot_avec_couleurs(colonne = 'emissions_ges', by = 'classe_ges'):
     upload_to_s3(BUCKET_R, f"boxplot_avec_couleur_{by}.png")
     plt.clf()
 
-def par_annee_construction(colonne = 'classe_ges'):
+
+def par_annee_construction(colonne='classe_ges'):
     plt.clf()
-    # On définit les extrémités des cases 
+    # On définit les extrémités des cases
     # Une case correspond à une période de 20 ans et à une étiquette 
     extremites = [1901 + i*20 for i in range(0, 7)]
     labels = ['Entre {} et {}'.format(extremites[i], extremites[i+1]) for i in range(0, 6)]
@@ -277,7 +280,7 @@ def par_annee_construction(colonne = 'classe_ges'):
     # On crée les tranches d'années 
     dpe_reduit["tranche_annee"] = pd.cut(dpe_reduit['annee_construction'], bins=extremites, labels=labels)
 
-    #nombre de DPE en fonction de l'année 
+    # nombre de DPE en fonction de l'année 
     # On crée un tableau 
     tableau = pd.crosstab(dpe_reduit["tranche_annee"], dpe_reduit[colonne])
     # Puis une heatmap
@@ -305,14 +308,15 @@ def par_annee_construction(colonne = 'classe_ges'):
     upload_to_s3(BUCKET_R, f"nb_dpe_par_annee_{colonne}.png")
     plt.clf()
 
-def par_annee_construction_zoom(colonne = 'classe_ges'):
+
+def par_annee_construction_zoom(colonne='classe_ges'):
     # Même chose que précédemment mais cette fois on ne crée pas de tranches
     # Une case correspond à une année et à une étiquette
     # On ne s'intéresse qu'aux bâtiments construits entre 2000 et 2021
     plt.clf()
     dpe_reduit = dpe[dpe['annee_construction'].between(2000, 2021)]
 
-    #nombre de DPE en fonction de l'année 
+    # nombre de DPE en fonction de l'année 
     tableau = pd.crosstab(dpe_reduit['annee_construction'], dpe_reduit[colonne])
     plt.imshow(tableau, cmap="YlOrRd", aspect="auto")
 
@@ -338,7 +342,8 @@ def par_annee_construction_zoom(colonne = 'classe_ges'):
     upload_to_s3(BUCKET_R, f"nb_dpe_par_annee_zoom_{colonne}.png")
     plt.clf()
 
-def par_annee_construction2 (colonne = 'classe_ges'):
+
+def par_annee_construction2(colonne='classe_ges'):
     # même chose que les deux fonctions précédentes mais côte à côte 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
@@ -418,24 +423,25 @@ def par_annee_construction2 (colonne = 'classe_ges'):
 
     plt.close(fig)
 
-def barplot_type(colonne = 'classe_ges'):
+
+def barplot_type(colonne='classe_ges'):
     # Même chose que la fonction barplot précédente 
     # On rajoute les méthodes .unstack() et .transpose()
     # pour obtenir le graphique voulu
     plt.clf()
     (
         dpe
-        .sort_values(by = colonne)
+        .sort_values(by=colonne)
         .groupby('type_batiment')
         [colonne]
-        .value_counts(normalize = True)
+        .value_counts(normalize=True)
         .rename('proportion')
         .unstack()
         .transpose()
-        .plot.bar(rot=0, color = ['#7f7f7f', '#31a354', '#6baed6'])
-        
+        .plot.bar(rot=0, color=['#7f7f7f', '#31a354', '#6baed6'])
+
     )
-    #légendes
+    # légendes
     col_bis = f'{colonne}'.replace('_', ' ')
     plt.title(f'Proportion de chaque {col_bis} par type de bâtiment')
     plt.ylabel('Proportion')
@@ -450,6 +456,7 @@ def barplot_type(colonne = 'classe_ges'):
     upload_to_s3(BUCKET_R, f"bar_plot_type_{colonne}.png")
     plt.clf()
 
+
 def tableau(colonne):
     # On utilise la méthode .describe()
     # pour obtenir les statistiques descriptives voulues
@@ -461,7 +468,7 @@ def tableau(colonne):
             ['emissions_ges']
             .describe()
         )
-    else : 
+    else: 
         plt.clf()
         stat_dpe = (
             dpe
@@ -499,16 +506,16 @@ if __name__ == "__main__":
     carte('classe_energie')
     barplot('classe_ges')
     barplot('classe_energie')
-    #boxplot('emissions_ges', 'classe_ges')
+    # boxplot('emissions_ges', 'classe_ges')
     boxplot_avec_couleurs('emissions_ges', 'classe_ges')
-    #boxplot('conso_energie', 'classe_energie')
+    # boxplot('conso_energie', 'classe_energie')
     boxplot_avec_couleurs('conso_energie', 'classe_energie')
     par_annee_construction2('classe_ges')
     par_annee_construction2('classe_energie')
-    #par_annee_construction_zoom('classe_ges')
-    #par_annee_construction_zoom('classe_energie')
+    # par_annee_construction_zoom('classe_ges')
+    # par_annee_construction_zoom('classe_energie')
     barplot_type('classe_ges')
     barplot_type('classe_energie')
-    #tableau('classe_ges')
-    #tableau('classe_energie')
+    # tableau('classe_ges')
+    # tableau('classe_energie')
 
