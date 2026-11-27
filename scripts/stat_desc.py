@@ -34,9 +34,13 @@ import duckdb
 import pandas as pd
 import mimetypes
 
+# -------- Paramètres ----------#
+BUCKET_R = "ron"  # A paramètrer pour sauvegarder une copie dans son propre bucket
 
-# Fonction upload_to_s3 présente dans data_extraction_ademe.py avec quelques modifications 
-# notamment l'ajout d'un argument file permet d'utiliser cette fonction par la suite 
+# -------- Statistiques descriptives ----------#
+
+# Même fonction que upload_to_s3 présente dans data_extraction_ademe.py avec quelques modifications 
+# notamment l'ajout d'un argument file qui permet d'utiliser cette fonction par la suite 
 # pour toute sorte de graphiques à enregistrer dans l'espace de stockage du SSPCloud.
 def upload_to_s3(s3_bucket, file):
     """
@@ -76,7 +80,6 @@ dpe = duckdb.sql("""
 
 # Carte de la France métropolitaine avec le taux de passoire et la proportion d'étiquette par département
 # Fichier avec les contours des départements enregistré dans l'espace de stockage du SSPCloud
-BUCKET_R = "ron"
 path = f"s3://{BUCKET_R}/diffusion/georef-france-departement/georef-france-departement-millesime.shp"
 
 # Lignes de code communes aux classes ges et energie
