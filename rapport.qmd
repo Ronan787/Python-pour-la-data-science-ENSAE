@@ -228,7 +228,7 @@ Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les condition
 
 - La présence de coordonnées géographiques étant indispensable pour identifier les logements situés dans les ÉcoQuartiers, nous excluons les diagnostics non géolocalisés, bien qu’ils représentent une part importante des observations initiales. 
 - Nous conservons les diagnostics dont les classes énergie et GES sont comprises entre A et G et dont les valeurs de consommation énergétique et d’émissions de GES sont finies et non négatives. 
-- Nous excluons les DPE réalisés en outre-mer
+- Nous excluons les DPE réalisés en outre-mer.
 - Nous excluons ceux relevant du modèle « Centre commercial », le champ étant le parc résidentiel. 
 - Enfin, compte tenu des valeurs maximales particulièrement élevées, nous plafonnons chacune des deux variables quantitatives à son 99ᵉ percentile (winsorisation supérieure), afin de limiter l’influence des valeurs extrêmes sur les moyennes sans réduire la taille de l’échantillon. 
 
@@ -676,11 +676,11 @@ Le label "ÉcoQuartier" s’inscrit ainsi dans des opérations qui transforment 
 
 Principales limites :
 
-- Interprétation causale. Les écarts observés entre les écoquartiers et les territoires de comparaison sont descriptifs. Estimer l’effet propre du label nécessiterait une stratégie d’identification causale, éventuellement fondée sur un appariement entre logements comparables.
+- Interprétation causale. Les écarts observés entre les écoquartiers et les territoires de comparaison sont descriptifs. Estimer l’effet propre du label nécessiterait une stratégie d’identification causale, éventuellement fondée sur un appariement entre quartiers comparables pour former un groupe contrôle.
 - Représentativité. Les DPE couvrent une partie du parc de logements, avec une couverture variable selon les communes. Le champ de notre étude diffère ainsi de celui des estimations redressées du SDES [@sdes2018; @sdes2025].
 - Avancement des projets et effectifs. Environ 70 % des DPE rattachés aux écoquartiers se situent dans des périmètres encore en projet ou en chantier et peuvent donc concerner le bâti antérieur à l’opération. Les faibles effectifs et l’absence de DPE dans 117 écoquartiers limitent les comparaisons locales.
-- Précision géographique. Nous avons conservé les DPE quelle que soit la précision de leur géolocalisation. Des erreurs de rattachement sont donc possibles, notamment près des limites des écoquartiers.
-- Indicateurs et variables disponibles. Le DPE estime une consommation conventionnelle, tandis que les consommations réelles dépendent aussi des usages. La standardisation tient compte du modèle de DPE, du type de bâtiment et de la période de construction. Des données sur l’énergie de chauffage, la surface et le type d’occupation permettraient d’affiner les comparaisons. Des indicateurs comme la part d’espaces verts compléteraient l’évaluation environnementale des quartiers.
+- Précision géographique. Nous avons conservé les DPE quelle que soit la précision de leur géolocalisation. Des erreurs de rattachement sont donc possibles et peuvent se répercuter dans l'analyse notamment lorsque l'on travaille à une échelle très fine et sur des écoquartiers ayant peu de DPE.
+- Indicateurs et variables disponibles. Le DPE estime une consommation conventionnelle, tandis que les consommations réelles dépendent aussi des usages. La standardisation tient compte du modèle de DPE, du type de bâtiment et de la période de construction. Des données sur l’énergie de chauffage, la surface du logement, le climat et le type d’occupation permettraient d’affiner les comparaisons. Des indicateurs comme la part d’espaces verts compléteraient l’évaluation environnementale des quartiers.
 
 # Bibliographie
 
