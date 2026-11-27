@@ -273,7 +273,7 @@ def par_annee_construction(colonne = 'classe_ges'):
     labels = ['Entre {} et {}'.format(extremites[i], extremites[i+1]) for i in range(0, 6)]
 
     # Arbitrairement, on ne garde que les bâtiments contruits après 1900
-    dpe_reduit = dpe[dpe['annee_construction'].between(1901, 2021)]`
+    dpe_reduit = dpe[dpe['annee_construction'].between(1901, 2021)]
     # On crée les tranches d'années 
     dpe_reduit["tranche_annee"] = pd.cut(dpe_reduit['annee_construction'], bins=extremites, labels=labels)
 
@@ -440,7 +440,10 @@ def barplot_type(colonne = 'classe_ges'):
     plt.title(f'Proportion de chaque {col_bis} par type de bâtiment')
     plt.ylabel('Proportion')
     plt.xlabel(col_bis.capitalize())
-    plt.legend()
+
+    carres, labels = plt.gca().get_legend_handles_labels()
+    labels = ['Appartement' if label == 'Logement' else label for label in labels]
+    plt.legend(carres, labels)
 
     # On enregistre dans l'espace de stockage du SSPCloud
     plt.savefig(f"bar_plot_type_{colonne}.png")
