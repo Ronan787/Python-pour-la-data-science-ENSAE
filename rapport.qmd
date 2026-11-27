@@ -225,6 +225,7 @@ duckdb.sql("""
 ```
 
 Nous retenons les DPE réalisés entre 2013 et 2021 qui respectent les conditions définies dans `regles_conservation` du script ci-dessous :
+
 - La présence de coordonnées géographiques étant indispensable pour identifier les logements situés dans les ÉcoQuartiers, nous excluons les diagnostics non géolocalisés, bien qu’ils représentent une part importante des observations initiales. 
 - Nous conservons les diagnostics dont les classes énergie et GES sont comprises entre A et G et dont les valeurs de consommation énergétique et d’émissions de GES sont finies et non négatives. 
 - Nous excluons les DPE réalisés en outre-mer
