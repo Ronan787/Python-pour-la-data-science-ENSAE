@@ -11,7 +11,6 @@ format:
     code-fold: true
     code-summary: "Afficher le code"
     number-sections: true
-    embed-resources: true
 jupyter: python3
 execute:
   echo: true
@@ -476,7 +475,7 @@ Les tableaux et figures sont calculés par les scripts **scripts/stat_desc_ecoqu
 #| include: false
 import pandas as pd
 import s3fs
-from IPython.display import HTML, Image, display
+from IPython.display import IFrame, Image, display
 
 BUCKET_ECO = "cbouyer"
 fs = s3fs.S3FileSystem(  # lecture anonyme : le dossier diffusion est public
@@ -499,20 +498,9 @@ def afficher_png(nom):
 
 
 def afficher_carte(nom, hauteur=600):
-    """
-    Affiche une carte html enregistrée sur S3, depuis son adresse web.
-    L'iframe est créée par un petit script : sinon Quarto copierait la carte
-    dans le rapport (embed-resources) et elle ne s'afficherait plus.
-    """
-    url = f"https://minio.lab.sspcloud.fr/{chemin(nom)}"
-    display(HTML(
-        '<script>(function () {'
-        'var f = document.createElement("iframe");'
-        f'f.src = "{url}"; f.width = "100%"; f.height = "{hauteur}"; '
-        'f.style.border = "0";'
-        'var s = document.currentScript; s.parentNode.insertBefore(f, s);'
-        '})();</script>'
-    ))
+    """Affiche une carte html enregistrée sur S3, depuis son adresse web."""
+    display(IFrame(f"https://minio.lab.sspcloud.fr/{chemin(nom)}",
+                   width="100%", height=hauteur))
 
 
 def fr(x, decimales=1):
