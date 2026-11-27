@@ -583,7 +583,7 @@ Ce résultat ne peut pas être interprété sans tenir compte de la nature des l
 afficher_png("structure_logement.png")
 ```
 
-57 % des DPE d'écoquartier sont des DPE de logement neuf, contre 20 % en France, et 54 % concernent des logements construits entre 2013 et 2021, contre 20 % en France. Les écoquartiers comptent aussi beaucoup moins de maisons individuelles (7 % des DPE, contre 42 %) et davantage de DPE de type « logement » (78 %, contre 51 %). Pour mesurer ce que cette structure explique, nous calculons un **taux attendu** : le taux de passoires que le groupe aurait si, pour chaque catégorie de logement (modèle de DPE, type de bâtiment et période de construction), il avait les mêmes performances que la France entière.
+57 % des DPE d'écoquartier sont des DPE de logement neuf, contre 20 % en France, et 54 % concernent des logements construits entre 2013 et 2021, contre 20 % en France. Les écoquartiers comptent aussi beaucoup moins de maisons individuelles (7 % des DPE, contre 42 %) et davantage de DPE d'appartement (78 %, contre 51 %). Pour mesurer ce que cette structure explique, nous calculons un **taux attendu** : le taux de passoires que le groupe aurait si, pour chaque catégorie de logement (modèle de DPE, type de bâtiment et période de construction), il avait les mêmes performances que la France entière.
 
 ```{python}
 st = lire_csv("taux_passoires_standardise.csv")
