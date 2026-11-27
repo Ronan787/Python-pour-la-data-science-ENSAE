@@ -7,10 +7,12 @@ Les résultats obtenus sont regroupés dans un rapport qui prend la forme d'un s
 
 ## Ouvrir le rapport
 
-Les librairies python nécessaires sont regroupées dans le fichier **requirements.txt** : **pip install -r requirements.txt**
-Pour ouvrir le site web, il suffit d'écrire la ligne suivante dans le terminal de VS code après avoir ouvert le projet depuis GitHub : "**quarto preview rapport.qmd**". Pour créer un fichier `rapport.html`, utiliser `quarto render rapport.qmd` : il doit alors être conservé avec son dossier `rapport_files/`.
+Les librairies python nécessaires sont regroupées dans le fichier `requirements.txt` : `pip install -r requirements.txt`
+Pour ouvrir le site web, il suffit d'écrire la ligne suivante dans le terminal de VS code après avoir ouvert le projet depuis GitHub : `quarto preview rapport.qmd`. Pour créer un fichier `rapport.html`, utiliser `quarto render rapport.qmd` : il doit alors être conservé avec son dossier `rapport_files/`.
 
-**Si le rapport ne se lance pas** (problème avec Quarto, avec l'accès à S3, etc.), une version déjà générée est fournie en secours : **rapport.html**, à ouvrir dans un navigateur. Elle doit rester dans le même dossier que **rapport_files/** (sans lui, la page s'affiche sans mise en forme ni images), et il faut télécharger les deux ou cloner le dépôt, car GitHub n'affiche que le code source du fichier. Les cartes interactives sont chargées depuis le stockage SSPCloud : une connexion internet est nécessaire pour les voir.
+**Si le rapport ne se lance pas** (problème avec Quarto, avec l'accès à S3, etc.), une version déjà générée est fournie en secours : [Consulter le rapport Quarto](https://ronan787.github.io/Python-pour-la-data-science-ENSAE/rapport.html). 
+
+ <!-- **rapport.html**, à ouvrir dans un navigateur. Elle doit rester dans le même dossier que **rapport_files/** (sans lui, la page s'affiche sans mise en forme ni images), et il faut télécharger les deux ou cloner le dépôt, car GitHub n'affiche que le code source du fichier. Les cartes interactives sont chargées depuis le stockage SSPCloud : une connexion internet est nécessaire pour les voir. -->
 
 Nous avons fait en sorte de réduire le temps de lancement du site au maximum : les cartes et les graphiques ont été générés au préalable à partir du code et enregistrés dans l’espace de stockage du SSPCloud, que le rapport se contente d'afficher. Malgré ces précautions, le site met un certain temps à se lancer.
 
@@ -20,10 +22,10 @@ Les cartes générées sont interactives. Il est donc possible de naviguer dessu
 
 Le code est regroupé dans le dossier **scripts**. Il n'est pas nécessaire de le relancer pour ouvrir le rapport.
 
-**Pour enregistrer les résultats dans son propre bucket** (droit d'écriture nécessaire), il suffit de renseigner son nom dans la variable indiquée *« Bucket à paramétrer »* en haut des scripts concernés. Les lectures de données restent sur les buckets d'origine, sans modification. Les fichiers lus par `rapport.qmd` (dossier `diffusion` de chaque bucket) doivent être en **lecture publique**.
+**Pour enregistrer les résultats dans son propre bucket** (droit d'écriture nécessaire), il suffit de renseigner son nom dans la variable indiquée *« Bucket à paramétrer »* en haut des scripts concernés. Les fonctions qui appellent des données déjà enregistrées sur un de nos bucket S3 en revanche, n'ont pas besoin de paramétrage. Nous avons sauvegardé les fichiers dans le dossier `diffusion` de chaque bucket afin qu'ils soient accessibles.
 
-- data_extraction_ademe.py : contient le code permettant de récupérer les données DPE depuis l'API associée. Les données ainsi récupérées sont stockées dans l’espace de stockage du SSPCloud (2 à 3 heures). *Bucket à paramétrer : `S3_BUCKET`.*
-- data_cleaning_ademe.py : contient le code permettant de nettoyer et de formater les données DPE extraites, appelées depuis l’espace de stockage du SSPCloud. *Bucket à paramétrer : `S3_BUCKET`.*
+- data_extraction_ademe.py : contient le code permettant de récupérer les données DPE depuis l'API de l'Ademe. Les données ainsi récupérées sont stockées dans l’espace de stockage du SSPCloud (2 à 3 heures). Pour l'enregistrement : *Bucket à paramétrer : `S3_BUCKET`.*
+- data_cleaning_ademe.py : contient le code permettant de nettoyer et de formater les données DPE extraites, appelées depuis l’espace de stockage du SSPCloud. Pour l'enregistrement : *Bucket à paramétrer : `S3_BUCKET`.*
 - stat_desc.py : contient le code générant cartes et graphiques en vue d'obtenir des statistiques descriptives à l'échelle nationale. *Bucket à paramétrer : `BUCKET_R`, qui sert aussi à lire le shapefile des départements : le copier dans le même dossier de son bucket (`diffusion/georef-france-departement/`).*
 - data_extraction_ecoquartiers.py : contient le code permettant de récupérer les contours des ÉcoQuartiers et de les charger dans un GeoDataFrame.
 - data_cleaning_ecoquartiers.py : contient le code permettant de nettoyer les données des ÉcoQuartiers extraites. 
