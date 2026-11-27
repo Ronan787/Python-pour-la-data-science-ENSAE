@@ -10,6 +10,8 @@ Les résultats obtenus sont regroupés dans un rapport qui prend la forme d'un s
 Les librairies python nécessaires sont regroupées dans le fichier **requirements.txt** : **pip install -r requirements.txt**
 Pour ouvrir le site web, il suffit d'écrire la ligne suivante dans le terminal de VS code après avoir ouvert le projet depuis GitHub : "**quarto preview rapport.qmd**". Pour créer un fichier `rapport.html`, utiliser `quarto render rapport.qmd` : il doit alors être conservé avec son dossier `rapport_files/`.
 
+Une version déjà générée du rapport est également fournie : **rapport.html**, à ouvrir dans un navigateur. Elle doit rester dans le même dossier que **rapport_files/** (sans lui, la page s'affiche sans mise en forme ni images), et il faut télécharger les deux ou cloner le dépôt, car GitHub n'affiche que le code source du fichier. Les cartes interactives sont chargées depuis le stockage SSPCloud : une connexion internet est nécessaire pour les voir.
+
 Nous avons fait en sorte de réduire le temps de lancement du site au maximum : les cartes et les graphiques ont été générés au préalable à partir du code et enregistrés dans l’espace de stockage du SSPCloud, que le rapport se contente d'afficher. Malgré ces précautions, le site met un certain temps à se lancer.
 
 Les cartes générées sont interactives. Il est donc possible de naviguer dessus. Cependant, notre étude se limite à la France métropolitaine. Nul besoin d'explorer d'autres continents. 
@@ -39,6 +41,6 @@ Lancer depuis la racine du dépôt (`python scripts/nom_du_script.py`), dans cet
 3. `data_extraction_ecoquartiers.py`, puis `data_cleaning_ecoquartiers.py`.
 4. `croisement_dpe_ecoquartiers.py` : il produit `resultats/dpe_ecoquartiers.parquet` en local, nécessaire aux scripts suivants.
 5. `stat_desc.py`, `stat_desc_ecoquartiers.py`, `structure_logement_ecoquartiers.py` et `comparaisons_ecoquartiers.py` (dans n'importe quel ordre).
-6. `quarto render rapport.qmd`.
+6. `quarto render rapport.qmd` (régénère `rapport.html`).
 
-**Paramètres à adapter.** Avec un autre compte, remplacer les noms de buckets (il faut un droit d'écriture) : `S3_BUCKET` dans `data_extraction_ademe.py`, `data_cleaning_ademe.py` et `utils_ecoquartiers.py`, `BUCKET_R` dans `stat_desc.py`, et `DPE_CLEAN` dans `utils_ecoquartiers.py`. Les fichiers lus par `rapport.qmd` (dossier `diffusion` de chaque bucket) doivent être en **lecture publique**.
+**Paramètres à adapter.** Pour enregistrer les résultats dans son propre bucket (droit d'écriture nécessaire), renseigner son nom en haut de chaque script concerné : `S3_BUCKET` dans `data_extraction_ademe.py`, `data_cleaning_ademe.py` et `utils_ecoquartiers.py` (ce dernier est commun à tous les scripts sur les écoquartiers), et `BUCKET_R` dans `stat_desc.py`. Les lectures de données restent sur les buckets d'origine et n'ont pas besoin d'être modifiées. Les fichiers lus par `rapport.qmd` (dossier `diffusion` de chaque bucket) doivent être en **lecture publique**.
