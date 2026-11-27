@@ -668,14 +668,16 @@ La répartition des classes est très différente pour l'énergie : 60 % des DPE
 
 ## Conclusion et discussion
 
+Notre analyse met en évidence de meilleures performances énergétiques parmi les logements diagnostiqués dans les écoquartiers, y compris par rapport aux logements situés dans les mêmes communes. La composition du bâti, en particulier la place de la construction neuve, rend compte de l’essentiel de cet écart. Sur le volet « climat », l’avantage est moins marqué.
 
+Le label "ÉcoQuartier" s’inscrit ainsi dans des opérations qui transforment le bâti. Notre étude met surtout en évidence le rôle de la construction neuve. La couverture inégale des diagnostics et la présence de projets encore en cours limitent la généralisation de ces résultats. La contribution propre des rénovations et l’effet de la labellisation restent à établir.
 
-- Les DPE ne sont pas un échantillon représentatif du parc de logements : ils sont établis à la construction, à la vente ou à la location. La structure du parc diagnostiqué diffère donc beaucoup de celle du parc existant, et plus encore dans les écoquartiers.
-- 70 % des DPE d'écoquartier se trouvent dans des périmètres encore en projet ou en chantier : ils décrivent surtout le bâti d'avant l'opération, et non les logements construits dans l'écoquartier.
-- Les petits effectifs (en médiane 77 DPE par écoquartier, et 117 écoquartiers sans DPE) rendent les comparaisons par écoquartier ou par région fragiles. Elles ne sont présentées qu'à titre descriptif.
-- Nous ne disposons ni de l'énergie de chauffage, ni de la surface, ni du type d'occupation : la standardisation ne tient compte que du modèle de DPE, du type de bâtiment et de la période de construction.
-- Les communes d'écoquartier sont déterminées à partir de la commune principale de chaque écoquartier et des communes de ses DPE : un écoquartier situé sur plusieurs communes ou une commune fusionnée depuis peut être mal rattaché.
-- Ces résultats décrivent des écarts, et non l'effet du label : les écoquartiers sont sélectionnés sur des critères que nous ne contrôlons pas.
+Principales limites :
+- Interprétation causale. Les écarts observés entre les écoquartiers et les territoires de comparaison sont descriptifs. Estimer l’effet propre du label nécessiterait une stratégie d’identification causale, éventuellement fondée sur un appariement entre logements comparables.
+- Représentativité. Les DPE couvrent une partie du parc de logements, avec une couverture variable selon les communes. Le champ de notre étude diffère ainsi de celui des estimations redressées du SDES [@sdes2018; @sdes2025].
+- Avancement des projets et effectifs. Environ 70 % des DPE rattachés aux écoquartiers se situent dans des périmètres encore en projet ou en chantier et peuvent donc concerner le bâti antérieur à l’opération. Les faibles effectifs et l’absence de DPE dans 117 écoquartiers limitent les comparaisons locales.
+- Précision géographique. Nous avons conservé les DPE quelle que soit la précision de leur géolocalisation. Des erreurs de rattachement sont donc possibles, notamment près des limites des écoquartiers.
+- Indicateurs et variables disponibles. Le DPE estime une consommation conventionnelle, tandis que les consommations réelles dépendent aussi des usages. La standardisation tient compte du modèle de DPE, du type de bâtiment et de la période de construction. Des données sur l’énergie de chauffage, la surface et le type d’occupation permettraient d’affiner les comparaisons. Des indicateurs comme la part d’espaces verts compléteraient l’évaluation environnementale des quartiers.
 
 # Bibliographie
 
